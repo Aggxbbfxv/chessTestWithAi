@@ -4,7 +4,6 @@
 
 Game::Game() : p_currentTurn(Piece::WHITE)
 {
-    // ÃÊ±âÈ­ ½Ã nullptr ¼³Á¤
     for(int x = 0; x < 8; ++x)
         for(int y = 0; y < 8; ++y)
             m_board[x][y] = nullptr;
@@ -21,7 +20,7 @@ Game::~Game()
 
 Game::Game(const Game& other) : p_currentTurn(other.p_currentTurn)
 {
-    // Å· À§Ä¡ º¹»ç
+    // [ìµœì í™”] í‚¹ ìœ„ì¹˜ ë³µì‚¬
     m_wKingX = other.m_wKingX; m_wKingY = other.m_wKingY;
     m_bKingX = other.m_bKingX; m_bKingY = other.m_bKingY;
 
@@ -39,26 +38,25 @@ Game::Game(const Game& other) : p_currentTurn(other.p_currentTurn)
 
 void Game::resetBoard()
 {
-    // ±âÁ¸ ±â¹° Á¤¸®
     for(int x=0; x<8; ++x)
         for(int y=0; y<8; ++y)
             if(m_board[x][y]) { delete m_board[x][y]; m_board[x][y] = nullptr; }
 
-    // Èæ(Black) ¹èÄ¡ (y=0,1)
+    // í‘(Black) ë°°ì¹˜
     m_board[0][0] = new Rook(Piece::BLACK);   m_board[7][0] = new Rook(Piece::BLACK);
     m_board[1][0] = new Knight(Piece::BLACK); m_board[6][0] = new Knight(Piece::BLACK);
     m_board[2][0] = new Bishop(Piece::BLACK); m_board[5][0] = new Bishop(Piece::BLACK);
     m_board[3][0] = new Queen(Piece::BLACK);  m_board[4][0] = new King(Piece::BLACK);
     for(int x=0; x<8; ++x) m_board[x][1] = new Pawn(Piece::BLACK);
 
-    // ¹é(White) ¹èÄ¡ (y=6,7)
+    // ë°±(White) ë°°ì¹˜
     m_board[0][7] = new Rook(Piece::WHITE);   m_board[7][7] = new Rook(Piece::WHITE);
     m_board[1][7] = new Knight(Piece::WHITE); m_board[6][7] = new Knight(Piece::WHITE);
     m_board[2][7] = new Bishop(Piece::WHITE); m_board[5][7] = new Bishop(Piece::WHITE);
     m_board[3][7] = new Queen(Piece::WHITE);  m_board[4][7] = new King(Piece::WHITE);
     for(int x=0; x<8; ++x) m_board[x][6] = new Pawn(Piece::WHITE);
 
-    // Å· À§Ä¡ ÃÊ±âÈ­
+    // [ìµœì í™”] í‚¹ ìœ„ì¹˜ ì´ˆê¸°í™”
     m_bKingX = 4; m_bKingY = 0;
     m_wKingX = 4; m_wKingY = 7;
 
@@ -87,7 +85,7 @@ Piece* Game::makeMove(const Move& move)
     Piece* capturedPiece = m_board[move.toX][move.toY];
     Piece* pieceToMove = m_board[move.fromX][move.fromY];
 
-    // Å· À§Ä¡ ¾÷µ¥ÀÌÆ®
+    // [ìµœì í™”] í‚¹ì´ ì´ë™í•˜ëŠ” ê²½ìš° ìœ„ì¹˜ ìºì‹œ ì—…ë°ì´íŠ¸
     if (pieceToMove->getType() == Piece::KING) {
         if (pieceToMove->getColor() == Piece::WHITE) {
             m_wKingX = move.toX; m_wKingY = move.toY;
@@ -109,7 +107,7 @@ void Game::unmakeMove(const Move& move, Piece* capturedPiece)
 
     Piece* movedPiece = m_board[move.toX][move.toY];
 
-    // Å· À§Ä¡ ¿øº¹
+    // [ìµœì í™”] í‚¹ ìœ„ì¹˜ ì›ë³µ
     if (movedPiece->getType() == Piece::KING) {
         if (movedPiece->getColor() == Piece::WHITE) {
             m_wKingX = move.fromX; m_wKingY = move.fromY;
@@ -129,17 +127,19 @@ Game Game::makeMoveCopy(const Move& move) const
     return newGame;
 }
 
-// [´ëÆø ÃÖÀûÈ­] Å·ÀÇ À§Ä¡¿¡¼­ ¿ªÀ¸·Î °ø°İÀÚ¸¦ Å½»ö (Reverse Check)
-// O(1) - º¸µå ÀüÃ¼¸¦ µ¹Áö ¾Ê°í À§ÇùÀÌ °¡´ÉÇÑ °æ·Î¸¸ °Ë»ç
+// [ëŒ€í­ ìµœì í™”] Reverse Check (í‚¹ ê¸°ì¤€ ì—­íƒìƒ‰)
+// ëª¨ë“  ì  ê¸°ë¬¼ì˜ ê³µê²© ë²”ìœ„ë¥¼ ê³„ì‚°í•˜ëŠ” ëŒ€ì‹ , í‚¹ì—ê²Œ ë„ë‹¬í•  ìˆ˜ ìˆëŠ” ê²½ë¡œë§Œ ê²€ì‚¬í•©ë‹ˆë‹¤.
+// ì‹œê°„ ë³µì¡ë„ê°€ O(N)ì—ì„œ ê±°ì˜ O(1)ë¡œ ì¤„ì–´ë“­ë‹ˆë‹¤.
 bool Game::isCheck(Piece::PieceColor kingColor) const
 {
     int kx, ky;
+    // ìºì‹±ëœ ì¢Œí‘œ ì‚¬ìš©
     if (kingColor == Piece::WHITE) { kx = m_wKingX; ky = m_wKingY; }
     else                           { kx = m_bKingX; ky = m_bKingY; }
 
     Piece::PieceColor enemyColor = (kingColor == Piece::WHITE) ? Piece::BLACK : Piece::WHITE;
 
-    // 1. ³ªÀÌÆ® °ø°İ È®ÀÎ
+    // 1. ë‚˜ì´íŠ¸ ê³µê²© í™•ì¸
     static const int knDx[] = {1, 1, 2, 2, -1, -1, -2, -2};
     static const int knDy[] = {2, -2, 1, -1, 2, -2, 1, -1};
     for(int i=0; i<8; ++i) {
@@ -151,30 +151,24 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
         }
     }
 
-    // 2. Æù °ø°İ È®ÀÎ (Àû ÆùÀÌ ³ª¸¦ °ø°İÇÒ ¼ö ÀÖ´Â À§Ä¡¿¡ ÀÖ´ÂÁö È®ÀÎ)
-    // Àû ÆùÀÇ ÀüÁø ¹æÇâÀÌ ³» Å· ÂÊÀÌ¾î¾ß ÇÔ. Áï ³» Å· ÀÔÀå¿¡¼± "Àû ÆùÀÌ ¿À´Â ¹æÇâÀÇ ¹İ´ë"¸¦ ºÁ¾ß ÇÔ.
-    // ¿¹: White King(y=6), Black PawnÀº y°¡ ÀÛÀº °÷¿¡¼­ ¿È. -> °Ë»ç´Â y-1¿¡¼­ ÇØ¾ß ÇÔ.
-    int pawnDir = (kingColor == Piece::WHITE) ? -1 : 1; // Àû ÆùÀÌ ÀÖ´Â yÃà ¹æÇâ (³» ±âÁØ À§ÂÊ/¾Æ·¡ÂÊ)
+    // 2. í° ê³µê²© í™•ì¸
+    // ë‚´ í‚¹ì„ ê³µê²©í•  ìˆ˜ ìˆëŠ” 'ì  í°ì˜ ìœ„ì¹˜'ë¥¼ í™•ì¸í•©ë‹ˆë‹¤.
+    // ì  í°ì´ ì´ë™í•´ì˜¤ëŠ” ë°©í–¥ì˜ ë°˜ëŒ€ìª½ ëŒ€ê°ì„ ì— ì  í°ì´ ìˆì–´ì•¼ í•¨
+    int pawnDir = (kingColor == Piece::WHITE) ? -1 : 1; 
 
-    // ÁÖÀÇ: pawnDirÀº "³» Å·ÀÌ ¾îµğ¼­ °ø°İ¹Ş³ª"°¡ ¾Æ´Ï¶ó, "Àû ÆùÀÌ ÀÌµ¿ÇÏ´Â ¹æÇâ"ÀÇ ¿ªÀÌ¾î¾ß ÇÔ.
-    // Black Pawn moves +1 (down). White King checks up (-1).
-    // White Pawn moves -1 (up). Black King checks down (+1).
-
-    int py = ky + pawnDir;
+    int py = ky + pawnDir; 
     if(py >= 0 && py < 8) {
-        // ¿ŞÂÊ ´ë°¢¼±
         if(kx > 0) {
             Piece* p = m_board[kx-1][py];
             if(p && p->getColor() == enemyColor && p->getType() == Piece::PAWN) return true;
         }
-        // ¿À¸¥ÂÊ ´ë°¢¼±
         if(kx < 7) {
             Piece* p = m_board[kx+1][py];
             if(p && p->getColor() == enemyColor && p->getType() == Piece::PAWN) return true;
         }
     }
 
-    // 3. Á÷¼± °ø°İ (·è, Äı)
+    // 3. ì§ì„  ê³µê²© (ë£©, í€¸)
     static const int rDx[] = {0, 0, 1, -1};
     static const int rDy[] = {1, -1, 0, 0};
     for(int i=0; i<4; ++i) {
@@ -185,12 +179,12 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
             Piece* p = m_board[cx][cy];
             if(p) {
                 if(p->getColor() == enemyColor && (p->getType() == Piece::ROOK || p->getType() == Piece::QUEEN)) return true;
-                break; // ³» ±â¹°ÀÌµç Àû ±â¹°ÀÌµç ¸·È÷¸é ´õ ÀÌ»ó ¸ø °¨
+                break; 
             }
         }
     }
 
-    // 4. ´ë°¢¼± °ø°İ (ºñ¼ó, Äı)
+    // 4. ëŒ€ê°ì„  ê³µê²© (ë¹„ìˆ, í€¸)
     static const int bDx[] = {1, 1, -1, -1};
     static const int bDy[] = {1, -1, 1, -1};
     for(int i=0; i<4; ++i) {
@@ -206,7 +200,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
         }
     }
 
-    // 5. Àû Å· (ÀÎÁ¢ÇØ ÀÖ´ÂÁö - »ç½Ç Á¤»ó °ÔÀÓ¿¡¼± ºÒ°¡´ÉÇÏÁö¸¸ ·ê»ó Ã¼Å©)
+    // 5. ì  í‚¹ ì¸ì ‘ í™•ì¸ (ê·œì¹™ìƒ ë¶ˆê°€í•˜ì§€ë§Œ ì²´í¬)
     for(int dx=-1; dx<=1; ++dx){
         for(int dy=-1; dy<=1; ++dy){
             if(dx==0 && dy==0) continue;
@@ -221,13 +215,12 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
     return false;
 }
 
-// [ÃÖÀûÈ­] ¸Ş¸ğ¸® ÇÒ´ç ÃÖ¼ÒÈ­ ¹× generateMoves ±¸Á¶ °³¼±
 vector<Move> Game::generateMoves(Piece::PieceColor color)
 {
     vector<Move> possibleMoves;
-    possibleMoves.reserve(50); // Æò±ÕÀûÀÎ Ã¼½º ÀÌµ¿ ¼ö¸¸Å­ ¿¹¾à
+    possibleMoves.reserve(64); // ë©”ëª¨ë¦¬ ì¬í• ë‹¹ ìµœì†Œí™”
 
-    // 1. ¸ğµç °¡´ÉÇÑ ÀÌµ¿ ¼öÁı (Pseudo-legal moves)
+    // 1. ëª¨ë“  ê¸°ë¬¼ì˜ ê¸°ë³¸ ì´ë™ ìˆ˜ì§‘ (Pseudo-legal)
     for(int x = 0; x < 8; ++x)
     {
         for(int y = 0; y < 8; ++y)
@@ -235,22 +228,20 @@ vector<Move> Game::generateMoves(Piece::PieceColor color)
             Piece* p = m_board[x][y];
             if(p && p->getColor() == color)
             {
-                // ÂüÁ¶·Î ³Ñ°Ü¼­ º¤ÅÍ º¹»ç ¹æÁö
+                // [ìµœì í™”] ë²¡í„° ì°¸ì¡° ì „ë‹¬
                 p->addPossibleMoves(*this, x, y, possibleMoves);
             }
         }
     }
 
     vector<Move> legalMoves;
-    legalMoves.reserve(possibleMoves.size()); // À¯È¿ ÀÌµ¿¸¸ ´ãÀ» º¤ÅÍ
+    legalMoves.reserve(possibleMoves.size());
 
-    // 2. Ã¼Å© ¿©ºÎ °ËÁõ (½ÇÁ¦ ÀÌµ¿ -> isCheck -> º¹±¸)
-    // isCheck°¡ O(1)·Î »¡¶óÁ®¼­ ÀÌ ·çÇÁ°¡ ¸Å¿ì »¡¶óÁü
+    // 2. ì²´í¬ ìƒíƒœ ê²€ì¦ (isCheck ìµœì í™”ë¡œ ì¸í•´ ë§¤ìš° ë¹¨ë¼ì§)
     for(const auto& move : possibleMoves)
     {
         Piece* captured = this->makeMove(move);
 
-        // ³»°¡ µĞ ¼ö·Î ÀÎÇØ ³» ¿ÕÀÌ Ã¼Å© »óÅÂ°¡ ¾Æ´Ï¾î¾ß ÇÔ
         if(!this->isCheck(color))
         {
             legalMoves.push_back(move);

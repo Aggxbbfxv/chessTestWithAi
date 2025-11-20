@@ -7,13 +7,21 @@
 
 class Game
 {
+    // [ìµœì í™”] AI í´ë˜ìŠ¤ê°€ Gameì˜ private ë©¤ë²„(m_board)ì— ì§ì ‘ ì ‘ê·¼í•  ìˆ˜ ìˆê²Œ í—ˆìš©
+    // ì´ë¥¼ í†µí•´ eval í•¨ìˆ˜ì—ì„œ getPiece() í•¨ìˆ˜ í˜¸ì¶œ ë¹„ìš©ì„ ì œê±°í•˜ì—¬ ì†ë„ë¥¼ ë†’ì„
+    friend class AI;
+
 public:
     Game();
     Game(const Game& other);
     ~Game();
 
     void resetBoard();
+    
+    // [ìµœì í™”] ìì£¼ í˜¸ì¶œë˜ë¯€ë¡œ ì¸ë¼ì¸ ì²˜ë¦¬ê°€ ìœ ë¦¬í•  ìˆ˜ ìˆìœ¼ë‚˜, 
+    // AIëŠ” friendë¡œ ì§ì ‘ ì ‘ê·¼í•˜ë¯€ë¡œ ì™¸ë¶€ UIìš©ìœ¼ë¡œ ìœ ì§€
     Piece* getPiece(int x, int y) const;
+    
     Piece* makeMove(const Move& move);
     void unmakeMove(const Move& move, Piece* capturedPiece);
     Game makeMoveCopy(const Move& move) const;
@@ -21,19 +29,18 @@ public:
     Piece::PieceColor getCurrentTurn() const { return p_currentTurn; }
     bool isGameOver();
 
-    // [ÃÖÀûÈ­] ¹İÈ¯ÇüÀº À¯ÁöÇÏµÇ ³»ºÎ ±¸Çö ÃÖÀûÈ­
     std::vector<Move> generateMoves(Piece::PieceColor color);
 
     void setPiece(int x, int y, Piece* piece);
 
 private:
     void switchTurn();
-    bool isCheck(Piece::PieceColor kingColor) const; // ·ÎÁ÷ ¿ÏÀüÈ÷ º¯°æµÊ
+    bool isCheck(Piece::PieceColor kingColor) const;
 
     Piece* m_board[8][8];
     Piece::PieceColor p_currentTurn;
 
-    // [Ãß°¡] Å·ÀÇ À§Ä¡¸¦ O(1)·Î Ã£±â À§ÇÑ Ä³½Ã º¯¼ö
+    // í‚¹ ìœ„ì¹˜ ìºì‹œ (ê²€ìƒ‰ ì„±ëŠ¥ O(1) ë³´ì¥ìš©)
     int m_wKingX, m_wKingY;
     int m_bKingX, m_bKingY;
 };
