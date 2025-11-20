@@ -4,11 +4,11 @@
 #include <QElapsedTimer>
 #include <QDebug>
 
-int AI::nodeCount = 0;
+int AI::nodeCount = 0; 
 
-const Piece::PieceColor aiColor = Piece::BLACK; //ai ¼³Á¤Àº °ËÁ¤!
+const Piece::PieceColor aiColor = Piece::BLACK; //ai ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½!
 
-const int AI::pawnPST[8][8] = { //pst Å×ÀÌºí °¡Á®¿Â°Çµ¥ Æù¸¸ ÀÌ·¸°Ô µÇ¾îÀÖ´Â ÀÌÀ¯´Â ÅÇÅ°·Î Ã³À½¿¡ ¸ÂÃâ·Á´Ù°¡ ³ªÀÌÆ®ºÎÅÍ´Â ±ÍÂú¾Æ¼­ º¹ºÙÇÏ´Ï±î ÀÌ¹Ì ¸ÂÃçÁ®ÀÖ´õ¶ó°í¿ä
+const int AI::pawnPST[8][8] = { //pst ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Â°Çµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ì·ï¿½ï¿½ï¿½ ï¿½Ç¾ï¿½ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å°ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù°ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ï¿½Í´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Æ¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´Ï±ï¿½ ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     {9000,  9000,   9000,   9000,   9000,   9000,   9000,   9000},
     {200,   200,    200,    200,    200,    200,    200,    200},
     {100,   100,    100,    100,    100,    100,    100,    100},
@@ -63,7 +63,7 @@ const int AI::queenPST[8][8] = {
     {-40, -20, -20, -10, -10, -20, -20, -40}
 };
 
-const int AI::kingPST[8][8] = { //Å·Àº ³ªÁß¿¡ ÈÄ¹ÝÀü¿ë Å×ÀÌºí µû·Î ¸¸µé°Å°°¾Æ¿ä
+const int AI::kingPST[8][8] = { //Å·ï¿½ï¿½ ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½Ä¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìºï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Å°ï¿½ï¿½Æ¿ï¿½
     {-60, -80, -80, -2, -20, -80, -80, -60},
     {-60, -80, -80, -2, -20, -80, -80, -60},
     {-60, -80, -80, -2, -20, -80, -80, -60},
@@ -76,24 +76,24 @@ const int AI::kingPST[8][8] = { //Å·Àº ³ªÁß¿¡ ÈÄ¹ÝÀü¿ë Å×ÀÌºí µû·Î ¸¸µé°Å°°¾Æ¿ä
 
 int AI::eval(const Game& game)
 {
-    int totalScore = 0; //ÃÑ Á¡¼ö¿¡¿ä
+    int totalScore = 0; //ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     for(int x = 0; x < 8; ++x)
     {
         for(int y = 0; y < 8; ++y)
         {
-            Piece* p = game.getPiece(x,y); //º¸µå¸¦ ¼øÈ¸ÇÏ¸é¼­ ±â¹°µé Á¤º¸¸¦ °¡Á®¿Í¿ä
+            Piece* p = game.getPiece(x,y); //ï¿½ï¿½ï¿½å¸¦ ï¿½ï¿½È¸ï¿½Ï¸é¼­ ï¿½â¹°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¿ï¿½
 
-            if(p != nullptr) //ÁÂÇ¥¿¡ ±â¹°ÀÌ ÀÖ´Â °æ¿ì
+            if(p != nullptr) //ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½â¹°ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½
             {
                 int pieceScore = 0;
 
-                pieceScore += p->getValue(); //±â¹°ÀÇ Á¡¼ö¸¦ ´õÇÏ°í¿ä
+                pieceScore += p->getValue(); //ï¿½â¹°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï°ï¿½ï¿½ï¿½
 
-                int pstY = (p->getColor() == Piece::WHITE) ? (7 - y) : y; //Èæ¹é ±¸ºÐ¿¡ µû¶ó yÁÂÇ¥ ¹ÝÀü!
+                int pstY = (p->getColor() == Piece::WHITE) ? (7 - y) : y; //ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ð¿ï¿½ ï¿½ï¿½ï¿½ï¿½ yï¿½ï¿½Ç¥ ï¿½ï¿½ï¿½ï¿½!
 
-                switch (p->getType()) //ÀÌ°Å ¸¸µé¸é¼­ »ý°¢ÇÑ°Çµ¥¿ä PST Å×ÀÌºí¿¡ ÀÖ´ø°Å ±×´ë·Î ¹ÚÀ¸¸é ¸î, ¸î ÀÌ·±½ÄÀ¸·Î Ç¥ÇöÇßÀ»¶§ y, x°¡ µÇ³×¿ä ÇãÇã
-                { //¾Æ¹«Æ° º¸µåÀÇ À§Ä¡¿¡ µû¶ó Á¡¼ö¸¦ ´Ù ´õÇÏ°ÔµÇÁÒ
+                switch (p->getType()) //ï¿½Ì°ï¿½ ï¿½ï¿½ï¿½ï¿½é¼­ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ°Çµï¿½ï¿½ï¿½ PST ï¿½ï¿½ï¿½Ìºï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ ï¿½×´ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½, ï¿½ï¿½ ï¿½Ì·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ y, xï¿½ï¿½ ï¿½Ç³×¿ï¿½ ï¿½ï¿½ï¿½ï¿½
+                { //ï¿½Æ¹ï¿½Æ° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ï°Ôµï¿½ï¿½ï¿½
                 case Piece::PAWN: pieceScore += pawnPST[pstY][x]; break;
                 case Piece::BISHOP: pieceScore += bishopPST[pstY][x]; break;
                 case Piece::KNIGHT: pieceScore += knightPST[pstY][x]; break;
@@ -103,41 +103,41 @@ int AI::eval(const Game& game)
                 default: break;
                 }
 
-                if(p->getColor() == aiColor) //ÀÎ°øÁö´ÉÀÌ¶û °°Àº »öÀÎ °æ¿ì ´õÇÏ°í
+                if(p->getColor() == aiColor) //ï¿½Î°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¶ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ï°ï¿½
                 {
                     totalScore += pieceScore;
                 }
-                else //´Ù¸£¸é Á¡¼ö¸¦ ±ðÁÒ
+                else //ï¿½Ù¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
                 {
                     totalScore -= pieceScore;
                 }
             }
         }
     }
-    return totalScore; //±×·¸°Ô ´õÇÑ°É ¹ÝÈ¯ÇØ¿ä
+    return totalScore; //ï¿½×·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ñ°ï¿½ ï¿½ï¿½È¯ï¿½Ø¿ï¿½
 }
 
-int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing) //¿©±â°¡ ¾ËÆÄº£Å¸ °¡ÁöÄ¡±â!
-{// ai.hºÎºÐ¿¡¼­ ±íÀÌ Á¶Àý°¡´ÉÇØ¿ä¤Ë
+int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing) //ï¿½ï¿½ï¿½â°¡ ï¿½ï¿½ï¿½Äºï¿½Å¸ ï¿½ï¿½ï¿½ï¿½Ä¡ï¿½ï¿½!
+{// ai.hï¿½ÎºÐ¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¿ï¿½ï¿½
     nodeCount++;
 
-    if(depth == 0 || state.isGameOver()) //±íÀÌ°¡ 0ÀÌ°Å³ª ´õ ÀÌ»ó ¿òÁ÷ÀÏ ±â¹°ÀÌ ¾ø´Â °æ¿ì
+    if(depth == 0 || state.isGameOver()) //ï¿½ï¿½ï¿½Ì°ï¿½ 0ï¿½Ì°Å³ï¿½ ï¿½ï¿½ ï¿½Ì»ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½â¹°ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
     {
-        return eval(state); //¹ÝÈ¯À» ÇØ¿ä
+        return eval(state); //ï¿½ï¿½È¯ï¿½ï¿½ ï¿½Ø¿ï¿½
     }
 
     vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
 
-    if(maxing) //ÃÖ´ëÈ­¸¦ ÇØ¾ßÇÏ´Â °æ¿ì
+    if(maxing) //ï¿½Ö´ï¿½È­ï¿½ï¿½ ï¿½Ø¾ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½
     {
-        int maxEval = -20000; //ÀÏ´Ü ÀÎ°øÁö´É ¼ö¾÷¿¡¼­´Â À½ÀÇ ¹«ÇÑ´ë¿´Áö¸¸ ±×³É ÀÌ·¸°Ô ÇØµÑ°Ô¿ä
+        int maxEval = -20000; //ï¿½Ï´ï¿½ ï¿½Î°ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ñ´ë¿´ï¿½ï¿½ï¿½ï¿½ ï¿½×³ï¿½ ï¿½Ì·ï¿½ï¿½ï¿½ ï¿½ØµÑ°Ô¿ï¿½
 
-        for(int i = 0; i < allMoves.size(); ++i) //¸ðµç ¿òÁ÷ÀÏ¼öÀÖ´Â ±× °æ¿ì ¾È¿¡¼­
+        for(int i = 0; i < allMoves.size(); ++i) //ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¼ï¿½ï¿½Ö´ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½È¿ï¿½ï¿½ï¿½
         {
-            Move move = allMoves[i]; //±×Áß¿¡ ÇÏ³ª¸¦ µé°í¿Í¿ä
+            Move move = allMoves[i]; //ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Í¿ï¿½
 
             Piece* captured = state.makeMove(move);
-            int evalScore = alphabeta(state, depth - 1, alpha, beta, false); //¿©±â¼­ Àç±ÍÀûÀ¸·Î È£ÃâÀ» ÇØ¿ä maxingÀÌ true³Ä false³Ä¿¡ µû¶ó ±× ÀÎ°øÁö´É¿¡¼­ ºÃ´ø ±× Æ®¸®ÀÖÀÝ¾Æ¿ä ¹ø°¥¾Æ°¡°Ô µÇÁÒ
+            int evalScore = alphabeta(state, depth - 1, alpha, beta, false); //ï¿½ï¿½ï¿½â¼­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½ï¿½ï¿½ ï¿½Ø¿ï¿½ maxingï¿½ï¿½ trueï¿½ï¿½ falseï¿½Ä¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Î°ï¿½ï¿½ï¿½ï¿½É¿ï¿½ï¿½ï¿½ ï¿½Ã´ï¿½ ï¿½ï¿½ Æ®ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾Æ¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Æ°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
             state.unmakeMove(move, captured);
 
@@ -146,12 +146,12 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing) //¿©
 
             if(beta <= alpha)
             {
-                break; //°¡ÁöÄ¡¤¡;
+                break; //ï¿½ï¿½ï¿½ï¿½Ä¡ï¿½ï¿½;
             }
         }
         return maxEval;
     }
-    else //¿©±âµµ ¸¶Âù°¡Áö·Î ÀÌ·ç¾îÁöÁÒ
+    else //ï¿½ï¿½ï¿½âµµ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     {
         int minEval = 20000;
 
@@ -178,7 +178,7 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing) //¿©
 
 Move AI::findBestMove(const Game& game)
 {
-    if(game.getCurrentTurn() != aiColor) // ai°¡ ¾Æ´Ò¶§ ±×³É ¹«½ÃÇØ¿ä
+    if(game.getCurrentTurn() != aiColor) // aiï¿½ï¿½ ï¿½Æ´Ò¶ï¿½ ï¿½×³ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¿ï¿½
     {
         return Move();
     }
@@ -191,7 +191,7 @@ Move AI::findBestMove(const Game& game)
     timer.start();
     nodeCount = 0;
 
-    Game rootGame = game; //±¸Á¶ º¯°æÀ¸·Î ¿øº»À» °ÇµéÁö ¾Ê±âÀ§ÇØ º¹»çº» »ý¼º
+    Game rootGame = game; //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Çµï¿½ï¿½ï¿½ ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½çº» ï¿½ï¿½ï¿½ï¿½
     vector<Move> allMoves = rootGame.generateMoves(aiColor);
 
     if(allMoves.empty())
@@ -218,8 +218,8 @@ Move AI::findBestMove(const Game& game)
 
     qDebug() << "========================================";
     qDebug() << "AI Search Depth:" << searchDepth;
-    qDebug() << "Time Elapsed:" << timer.elapsed() << "ms"; // °É¸° ½Ã°£ (¹Ð¸®ÃÊ)
-    qDebug() << "Nodes Visited:" << nodeCount;            // ¹æ¹®ÇÑ ³ëµå ¼ö
+    qDebug() << "Time Elapsed:" << timer.elapsed() << "ms"; // ï¿½É¸ï¿½ ï¿½Ã°ï¿½ (ï¿½Ð¸ï¿½ï¿½ï¿½)
+    qDebug() << "Nodes Visited:" << nodeCount;            // ï¿½æ¹®ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½
     qDebug() << "========================================";
 
     return bestMove;
