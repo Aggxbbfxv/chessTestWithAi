@@ -8,7 +8,7 @@ int AI::nodeCount = 0;
 
 const Piece::PieceColor aiColor = Piece::BLACK; //ai 설정은 검정!
 
-// ... (PST 테이블 변수들은 기존과 동일하므로 생략하지 않고 그대로 둡니다. 코드 적용시 위쪽 원본 코드의 배열들을 그대로 사용하세요.) ...
+// ... (PST 테이블 변수는 그대로 유지됩니다) ...
 const int AI::pawnPST[8][8] = {
     {9000,  9000,   9000,   9000,   9000,   9000,   9000,   9000},
     {200,   200,    200,    200,    200,    200,    200,    200},
@@ -75,18 +75,15 @@ const int AI::kingPST[8][8] = {
     {40,  60,  20,   0,  0,  20,  60,  40}
 };
 
-// [최적화] 수 정렬을 위한 점수 계산 함수 (MVV-LVA)
-// 잡히는 기물(Victim)이 비쌀수록, 잡는 기물(Attacker)이 쌀수록 높은 점수를 줍니다.
 int AI::scoreMove(const Game& game, const Move& move)
 {
+    // MVV-LVA: Most Valuable Victim - Least Valuable Aggressor
     Piece* target = game.getPiece(move.toX, move.toY);
     int score = 0;
 
-    if (target != nullptr) // 캡처인 경우
+    if (target != nullptr)
     {
         Piece* attacker = game.getPiece(move.fromX, move.fromY);
-        // 예: 폰(100)으로 퀸(900)을 잡으면: 10 * 900 - 100 = 8900 (아주 높은 우선순위)
-        // 예: 퀸(900)으로 폰(100)을 잡으면: 10 * 100 - 900 = 100 (낮은 우선순위)
         if (attacker != nullptr) {
              score = 10 * target->getValue() - attacker->getValue();
         }
@@ -97,18 +94,16 @@ int AI::scoreMove(const Game& game, const Move& move)
 int AI::eval(const Game& game)
 {
     int totalScore = 0;
-
+    // [최적화] getPiece 함수 호출 대신 m_board 직접 접근 (friend class 사용)
     for(int x = 0; x < 8; ++x)
     {
         for(int y = 0; y < 8; ++y)
         {
-            Piece* p = game.getPiece(x,y);
+            Piece* p = game.m_board[x][y];
 
             if(p != nullptr)
             {
-                int pieceScore = 0;
-                pieceScore += p->getValue();
-
+                int pieceScore = p->getValue();
                 int pstY = (p->getColor() == Piece::WHITE) ? (7 - y) : y;
 
                 switch (p->getType())
@@ -141,23 +136,42 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
         return eval(state);
     }
 
+    // [최적화] Null Move Pruning (널 무브 가지치기)
+    // 조건: 깊이가 충분하고(>=3), 현재 체크 상태가 아닐 때
+    // "내가 한 수를 쉬어도 유리하다면(beta cut), 이 가지는 더 볼 필요가 없다"
+    if (depth >= 3 && !state.isCheck(state.getCurrentTurn())) 
+    {
+        state.switchTurn(); // 턴 넘김 (Null Move)
+        
+        // R=2 (깊이를 2만큼 더 줄여서 탐색)
+        // Minimax 구조이므로 maxing이면 minning 호출, minning이면 maxing 호출
+        int score;
+        if (maxing) 
+            score = alphabeta(state, depth - 1 - 2, alpha, beta, false); 
+        else 
+            score = alphabeta(state, depth - 1 - 2, alpha, beta, true);
+            
+        state.switchTurn(); // 턴 복구
+
+        if (maxing) {
+            if (score >= beta) return beta; // Cut-off
+        } else {
+            if (score <= alpha) return alpha; // Cut-off
+        }
+    }
+
     vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
 
-    // [최적화 핵심] Move Ordering
-    // 생성된 수들을 '점수가 높은 순서'로 정렬합니다.
-    // 이렇게 하면 좋은 수를 먼저 탐색하게 되어, 베타 컷오프가 훨씬 빈번하게 발생합니다.
-    // maxing이든 minning이든 "현재 턴을 잡은 쪽에서 좋은 수"를 먼저 봐야 합니다.
+    // Move Ordering: MVV-LVA로 정렬
     std::sort(allMoves.begin(), allMoves.end(), [&](const Move& a, const Move& b) {
         return scoreMove(state, a) > scoreMove(state, b);
     });
 
     if(maxing)
     {
-        int maxEval = -200000; // 안전한 무한대 값
-
-        for(int i = 0; i < allMoves.size(); ++i)
+        int maxEval = -200000;
+        for(const auto& move : allMoves)
         {
-            Move move = allMoves[i];
             Piece* captured = state.makeMove(move);
             
             int evalScore = alphabeta(state, depth - 1, alpha, beta, false);
@@ -167,20 +181,15 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
             maxEval = max(maxEval, evalScore);
             alpha = max(alpha, evalScore);
 
-            if(beta <= alpha)
-            {
-                break; // 가지치기
-            }
+            if(beta <= alpha) break;
         }
         return maxEval;
     }
     else
     {
         int minEval = 200000;
-
-        for(int i = 0; i < allMoves.size(); ++i)
+        for(const auto& move : allMoves)
         {
-            Move move = allMoves[i];
             Piece* captured = state.makeMove(move);
 
             int evalScore = alphabeta(state, depth - 1, alpha, beta, true);
@@ -190,67 +199,95 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
             minEval = min(minEval, evalScore);
             beta = min(beta, evalScore);
 
-            if(beta <= alpha)
-            {
-                break; // 가지치기
-            }
+            if(beta <= alpha) break;
         }
         return minEval;
     }
 }
 
+// 루트 노드에서의 수와 점수를 저장하기 위한 구조체
+struct MoveScore {
+    Move move;
+    int score;
+};
+
 Move AI::findBestMove(const Game& game)
 {
-    if(game.getCurrentTurn() != aiColor)
-    {
-        return Move();
-    }
-
-    Move bestMove;
-    int maxEval = -200000;
+    if(game.getCurrentTurn() != aiColor) return Move();
 
     QElapsedTimer timer;
     timer.start();
     nodeCount = 0;
 
-    // 원본 보존을 위해 복사
     Game rootGame = game; 
-    vector<Move> allMoves = rootGame.generateMoves(aiColor);
+    vector<Move> rootMoves = rootGame.generateMoves(aiColor);
+    
+    if(rootMoves.empty()) return Move();
 
-    if(allMoves.empty())
-    {
-        return Move();
-    }
-
-    // [최적화] 루트 노드에서도 정렬 수행
-    std::sort(allMoves.begin(), allMoves.end(), [&](const Move& a, const Move& b) {
+    // [최적화] Iterative Deepening (반복 심화)
+    // 깊이 1부터 목표 깊이까지 점진적으로 탐색합니다.
+    // 이전 깊이에서 찾은 좋은 수를 다음 깊이 탐색의 맨 앞으로 보내어 가지치기 효율을 높입니다.
+    
+    // 초기 정렬 (MVV-LVA)
+    std::sort(rootMoves.begin(), rootMoves.end(), [&](const Move& a, const Move& b) {
         return scoreMove(rootGame, a) > scoreMove(rootGame, b);
     });
 
-    for(int i = 0; i < allMoves.size(); ++i)
+    // 각 수의 평가 점수를 저장할 벡터
+    std::vector<MoveScore> scoredMoves;
+    for (const auto& m : rootMoves) scoredMoves.push_back({m, -200000});
+
+    Move bestMoveSoFar;
+    int bestScoreSoFar = -200000;
+
+    for (int currentDepth = 1; currentDepth <= searchDepth; ++currentDepth)
     {
-        Move move = allMoves[i];
+        int alpha = -200000;
+        int beta = 200000;
+        int iterationBestScore = -200000;
+        Move iterationBestMove;
 
-        Piece* captured = rootGame.makeMove(move);
-
-        // searchDepth를 사용하여 재귀 호출
-        int evalScore = alphabeta(rootGame, searchDepth - 1, -200000, 200000, false);
-
-        rootGame.unmakeMove(move, captured);
-
-        if(evalScore > maxEval)
+        // 이번 깊이(currentDepth)에서 모든 루트 수 탐색
+        for (int i = 0; i < scoredMoves.size(); ++i)
         {
-            maxEval = evalScore;
-            bestMove = move;
+            Move move = scoredMoves[i].move;
+            Piece* captured = rootGame.makeMove(move);
+
+            // 재귀 호출
+            int score = alphabeta(rootGame, currentDepth - 1, alpha, beta, false);
+            
+            rootGame.unmakeMove(move, captured);
+
+            // 점수 기록
+            scoredMoves[i].score = score;
+
+            if (score > iterationBestScore) {
+                iterationBestScore = score;
+                iterationBestMove = move;
+            }
+
+            // Alpha 업데이트 (루트 노드이므로)
+            alpha = std::max(alpha, score);
         }
+
+        // [핵심] 점수 높은 순으로 정렬 (다음 깊이 탐색 시 좋은 수를 먼저 보기 위함)
+        std::sort(scoredMoves.begin(), scoredMoves.end(), [](const MoveScore& a, const MoveScore& b) {
+            return a.score > b.score;
+        });
+
+        bestScoreSoFar = scoredMoves[0].score; // 정렬 후 0번이 베스트
+        bestMoveSoFar = scoredMoves[0].move;
+
+        // (선택 사항) 시간이 너무 오래 걸리면 중단하는 로직을 여기에 추가 가능
+        // if (timer.elapsed() > 1000) break; 
     }
 
     qDebug() << "========================================";
-    qDebug() << "AI Search Depth:" << searchDepth;
+    qDebug() << "AI Iterative Depth:" << searchDepth;
     qDebug() << "Time Elapsed:" << timer.elapsed() << "ms"; 
     qDebug() << "Nodes Visited:" << nodeCount;
-    qDebug() << "Best Move Score:" << maxEval;
+    qDebug() << "Best Move Score:" << bestScoreSoFar;
     qDebug() << "========================================";
 
-    return bestMove;
+    return bestMoveSoFar;
 }
