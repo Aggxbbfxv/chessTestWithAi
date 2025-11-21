@@ -128,18 +128,21 @@ UndoInfo Game::makeMove(const Move& move)
     uint64_t newHash = currentHash;
 
     Piece* pieceToMove = m_board[move.fromX][move.fromY];
+    Piece::PieceColor movingColor = pieceToMove->getColor();
 
     // 1. 턴 변경 해시
     newHash ^= hasher.getBlackTurnKey();
 
-    // 2. 기물 이동 해시 (일단 출발 위치만 제거)
-    newHash ^= hasher.getPieceKey(pieceToMove->getType(), pieceToMove->getColor(), move.fromX, move.fromY);
+    // 2. 이전 앙파상 타겟이 있었다면 해시에서 제거
+    if (enPassantTargetSquare != -1) {
+        newHash ^= hasher.getEnPassantKey(enPassantTargetSquare % 8);
+    }
 
     // 3. 50수 카운터 및 캡처 처리
     fiftyMoveCounter++;
     Piece* capturedPiece = nullptr;
     if (move.moveType == Move::EN_PASSANT) {
-        int capturedPawnY = (pieceToMove->getColor() == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
+        int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
         capturedPiece = m_board[move.toX][capturedPawnY];
         newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, capturedPawnY);
         m_board[move.toX][capturedPawnY] = nullptr;
@@ -156,27 +159,22 @@ UndoInfo Game::makeMove(const Move& move)
     }
     undo.capturedPiece = capturedPiece;
 
-    // 4. 앙파상 타겟 변경 해시
-    if (enPassantTargetSquare != -1) {
-        newHash ^= hasher.getEnPassantKey(enPassantTargetSquare % 8);
-    }
-    if (pieceToMove->getType() == Piece::PAWN && abs(move.fromY - move.toY) == 2) {
-        enPassantTargetSquare = move.fromX + (move.fromY + move.toY) / 2 * 8;
-        newHash ^= hasher.getEnPassantKey(enPassantTargetSquare % 8);
-    } else {
-        enPassantTargetSquare = -1;
-    }
+    // 4. 기물 이동 (출발지에서 제거)
+    m_board[move.fromX][move.fromY] = nullptr;
+    newHash ^= hasher.getPieceKey(pieceToMove->getType(), movingColor, move.fromX, move.fromY);
 
-    // 5. 캐슬링 권한 변경 해시
+    // 5. 킹 위치 및 캐슬링 권한 업데이트
     if (pieceToMove->getType() == Piece::KING) {
-        if (pieceToMove->getColor() == Piece::WHITE) {
+        if (movingColor == Piece::WHITE) {
             if(w_castle_ks) newHash ^= hasher.getCastleKey(Piece::WHITE, true);
             if(w_castle_qs) newHash ^= hasher.getCastleKey(Piece::WHITE, false);
             w_castle_ks = false; w_castle_qs = false;
+            m_wKingX = move.toX; m_wKingY = move.toY;
         } else {
             if(b_castle_ks) newHash ^= hasher.getCastleKey(Piece::BLACK, true);
             if(b_castle_qs) newHash ^= hasher.getCastleKey(Piece::BLACK, false);
             b_castle_ks = false; b_castle_qs = false;
+            m_bKingX = move.toX; m_bKingY = move.toY;
         }
     }
     if (move.fromX == 0 && move.fromY == 7 && w_castle_qs) { newHash ^= hasher.getCastleKey(Piece::WHITE, false); w_castle_qs = false; }
@@ -184,45 +182,42 @@ UndoInfo Game::makeMove(const Move& move)
     if (move.fromX == 0 && move.fromY == 0 && b_castle_qs) { newHash ^= hasher.getCastleKey(Piece::BLACK, false); b_castle_qs = false; }
     if (move.fromX == 7 && move.fromY == 0 && b_castle_ks) { newHash ^= hasher.getCastleKey(Piece::BLACK, true); b_castle_ks = false; }
 
-
-    // --- 실제 보드 변경 ---
-    m_board[move.fromX][move.fromY] = nullptr;
-
-    // 킹 위치 캐시 업데이트
-    if (pieceToMove->getType() == Piece::KING) {
-        if (pieceToMove->getColor() == Piece::WHITE) { m_wKingX = move.toX; m_wKingY = move.toY; }
-        else { m_bKingX = move.toX; m_bKingY = move.toY; }
-    }
-
-    // 캐슬링 시 룩 이동
+    // 6. 캐슬링 시 룩 이동
     if (move.moveType == Move::CASTLE_KS) {
         Piece* rook = m_board[7][move.fromY];
         m_board[5][move.fromY] = rook;
         m_board[7][move.fromY] = nullptr;
-        newHash ^= hasher.getPieceKey(Piece::ROOK, rook->getColor(), 7, move.fromY);
-        newHash ^= hasher.getPieceKey(Piece::ROOK, rook->getColor(), 5, move.fromY);
+        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 7, move.fromY);
+        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 5, move.fromY);
     } else if (move.moveType == Move::CASTLE_QS) {
         Piece* rook = m_board[0][move.fromY];
         m_board[3][move.fromY] = rook;
         m_board[0][move.fromY] = nullptr;
-        newHash ^= hasher.getPieceKey(Piece::ROOK, rook->getColor(), 0, move.fromY);
-        newHash ^= hasher.getPieceKey(Piece::ROOK, rook->getColor(), 3, move.fromY);
+        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 0, move.fromY);
+        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 3, move.fromY);
     }
 
-    // 프로모션 처리
-    if (move.promotionType != Piece::EMPTY) {
+    // 7. 프로모션 처리
+    if (move.promotionType != 0) { // Piece::EMPTY 대신 0 사용
         delete pieceToMove; // 폰 삭제
-        switch(move.promotionType) {
-            case Piece::QUEEN: pieceToMove = new Queen(p_currentTurn); break;
-            case Piece::ROOK: pieceToMove = new Rook(p_currentTurn); break;
-            case Piece::BISHOP: pieceToMove = new Bishop(p_currentTurn); break;
-            case Piece::KNIGHT: pieceToMove = new Knight(p_currentTurn); break;
-            default: break;
+        switch((Piece::PieceType)move.promotionType) {
+            case Piece::QUEEN: pieceToMove = new Queen(movingColor); break;
+            case Piece::ROOK: pieceToMove = new Rook(movingColor); break;
+            case Piece::BISHOP: pieceToMove = new Bishop(movingColor); break;
+            case Piece::KNIGHT: pieceToMove = new Knight(movingColor); break;
+            default: break; // Should not happen
         }
     }
     m_board[move.toX][move.toY] = pieceToMove;
-    newHash ^= hasher.getPieceKey(pieceToMove->getType(), pieceToMove->getColor(), move.toX, move.toY);
+    newHash ^= hasher.getPieceKey(pieceToMove->getType(), movingColor, move.toX, move.toY);
 
+    // 8. 새로운 앙파상 타겟 설정
+    if (pieceToMove->getType() == Piece::PAWN && abs(move.fromY - move.toY) == 2) {
+        enPassantTargetSquare = move.fromX + (move.fromY + move.toY) / 2 * 8;
+        newHash ^= hasher.getEnPassantKey(enPassantTargetSquare % 8);
+    } else {
+        enPassantTargetSquare = -1;
+    }
 
     switchTurn();
     currentHash = newHash;
@@ -244,31 +239,28 @@ void Game::unmakeMove(const Move& move, const UndoInfo& undo)
     switchTurn();
 
     Piece* movedPiece = m_board[move.toX][move.toY];
+    Piece::PieceColor movingColor = movedPiece->getColor();
 
-    // 프로모션 원복
-    if (move.promotionType != Piece::EMPTY) {
+    if (move.promotionType != 0) { // Piece::EMPTY 대신 0 사용
         delete movedPiece;
-        movedPiece = new Pawn(p_currentTurn);
+        movedPiece = new Pawn(movingColor);
     }
 
     m_board[move.fromX][move.fromY] = movedPiece;
 
-    // 킹 위치 원복
     if (movedPiece->getType() == Piece::KING) {
-        if (movedPiece->getColor() == Piece::WHITE) { m_wKingX = move.fromX; m_wKingY = move.fromY; }
+        if (movingColor == Piece::WHITE) { m_wKingX = move.fromX; m_wKingY = move.fromY; }
         else { m_bKingX = move.fromX; m_bKingY = move.fromY; }
     }
 
-    // 앙파상 원복
     if (move.moveType == Move::EN_PASSANT) {
         m_board[move.toX][move.toY] = nullptr;
-        int capturedPawnY = (movedPiece->getColor() == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
+        int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
         m_board[move.toX][capturedPawnY] = undo.capturedPiece;
     } else {
         m_board[move.toX][move.toY] = undo.capturedPiece;
     }
 
-    // 캐슬링 룩 원복
     if (move.moveType == Move::CASTLE_KS) {
         Piece* rook = m_board[5][move.fromY];
         m_board[7][move.fromY] = rook;

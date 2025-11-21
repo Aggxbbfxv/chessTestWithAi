@@ -14,7 +14,8 @@ SOURCES += \
     game.cpp \
     main.cpp \
     mainwindow.cpp \
-    piece.cpp
+    piece.cpp \
+    ZobristHasher.cpp
 
 HEADERS += \
     ai.h \
@@ -22,7 +23,8 @@ HEADERS += \
     game.h \
     mainwindow.h \
     move.h \
-    piece.h
+    piece.h \
+    ZobristHasher.h
 
 FORMS += \
     mainwindow.ui

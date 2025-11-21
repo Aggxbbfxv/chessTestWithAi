@@ -65,15 +65,28 @@ const int AI::queenPST[8][8] = {
 };
 
 const int AI::kingPST[8][8] = {
-    {-60, -80, -80, -2, -20, -80, -80, -60},
-    {-60, -80, -80, -2, -20, -80, -80, -60},
-    {-60, -80, -80, -2, -20, -80, -80, -60},
-    {-60, -80, -80, -2, -20, -80, -80, -60},
-    {-40, -60, -60, -8, -80, -60, -60, -40},
-    {-20, -40, -40, -40,-40, -40, -40, -20},
-    {40,  40,   0,   0,  0,   0,  40,  40},
-    {40,  60,  20,   0,  0,  20,  60,  40}
+    {-60, -80, -80, -20, -20, -80, -80, -60},
+    {-60, -80, -80, -20, -20, -80, -80, -60},
+    {-60, -80, -80, -20, -20, -80, -80, -60},
+    {-60, -80, -80, -20, -20, -80, -80, -60},
+    {-40, -60, -60, -80, -80, -60, -60, -40},
+    {-20, -40, -40, -40, -40, -40, -40, -20},
+    {40,  40,   0,   0,   0,   0,  40,  40},
+    {40,  60,  20,   0,   0,  20,  60,  40}
 };
+
+// 엔드게임용 킹 PST (중앙으로 이동 장려)
+const int king_endgame_pst[8][8] = {
+    {-80, -60, -40, -20, -20, -40, -60, -80},
+    {-60, -40, -20,   0,   0, -20, -40, -60},
+    {-40, -20,  20,  40,  40,  20, -20, -40},
+    {-20,   0,  40,  60,  60,  40,   0, -20},
+    {-20,   0,  40,  60,  60,  40,   0, -20},
+    {-40, -20,  20,  40,  40,  20, -20, -40},
+    {-60, -40, -20,   0,   0, -20, -40, -60},
+    {-80, -60, -40, -20, -20, -40, -60, -80}
+};
+
 
 int AI::scoreMove(const Game& game, const Move& move)
 {
@@ -94,7 +107,8 @@ int AI::scoreMove(const Game& game, const Move& move)
 int AI::eval(const Game& game)
 {
     int totalScore = 0;
-    // [최적화] getPiece 함수 호출 대신 m_board 직접 접근 (friend class 사용)
+    int numMajorPieces = 0; // 퀸, 룩 카운트
+
     for(int x = 0; x < 8; ++x)
     {
         for(int y = 0; y < 8; ++y)
@@ -103,6 +117,10 @@ int AI::eval(const Game& game)
 
             if(p != nullptr)
             {
+                if (p->getType() == Piece::QUEEN || p->getType() == Piece::ROOK) {
+                    numMajorPieces++;
+                }
+
                 int pieceScore = p->getValue();
                 int pstY = (p->getColor() == Piece::WHITE) ? (7 - y) : y;
 
@@ -113,7 +131,14 @@ int AI::eval(const Game& game)
                 case Piece::KNIGHT: pieceScore += knightPST[pstY][x]; break;
                 case Piece::ROOK: pieceScore += rookPST[pstY][x]; break;
                 case Piece::QUEEN: pieceScore += queenPST[pstY][x]; break;
-                case Piece::KING: pieceScore += kingPST[pstY][x]; break;
+                case Piece::KING:
+                    // 게임 단계에 따라 다른 PST 적용
+                    if (numMajorPieces <= 3) { // 엔드게임으로 간주 (퀸 하나 또는 룩 두개 이하)
+                        pieceScore += king_endgame_pst[pstY][x];
+                    } else { // 미들게임
+                        pieceScore += kingPST[pstY][x];
+                    }
+                    break;
                 default: break;
                 }
 
@@ -131,33 +156,25 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
 {
     nodeCount++;
 
-    if(depth == 0 || state.isGameOver())
+    // 게임이 끝났는지 먼저 확인 (체크메이트, 스테일메이트, 무승부)
+    Game::GameState gameState = state.getGameState();
+    if (gameState != Game::IN_PROGRESS)
     {
-        return eval(state);
+        if (gameState == Game::CHECKMATE) {
+            // 현재 턴의 플레이어가 체크메이트 당한 것임.
+            // 만약 현재 턴이 AI(maxing) 차례인데 체크메이트라면 AI가 진 것이므로 최악의 점수.
+            // 반대라면 AI가 이긴 것이므로 최고의 점수.
+            // depth를 더해주는 이유: 더 빨리 이기는 수를 선호하게 만들기 위함.
+            return maxing ? (-100000 - depth) : (100000 + depth);
+        }
+        // 스테일메이트 또는 다른 무승부 조건
+        return 0;
     }
 
-    // [최적화] Null Move Pruning (널 무브 가지치기)
-    // 조건: 깊이가 충분하고(>=3), 현재 체크 상태가 아닐 때
-    // "내가 한 수를 쉬어도 유리하다면(beta cut), 이 가지는 더 볼 필요가 없다"
-    if (depth >= 3 && !state.isCheck(state.getCurrentTurn())) 
+    // 깊이 제한에 도달하면 평가 함수 호출
+    if(depth == 0)
     {
-        state.switchTurn(); // 턴 넘김 (Null Move)
-        
-        // R=2 (깊이를 2만큼 더 줄여서 탐색)
-        // Minimax 구조이므로 maxing이면 minning 호출, minning이면 maxing 호출
-        int score;
-        if (maxing) 
-            score = alphabeta(state, depth - 1 - 2, alpha, beta, false); 
-        else 
-            score = alphabeta(state, depth - 1 - 2, alpha, beta, true);
-            
-        state.switchTurn(); // 턴 복구
-
-        if (maxing) {
-            if (score >= beta) return beta; // Cut-off
-        } else {
-            if (score <= alpha) return alpha; // Cut-off
-        }
+        return eval(state);
     }
 
     vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());

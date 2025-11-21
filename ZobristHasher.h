@@ -13,7 +13,7 @@ public:
 
     // 증분 업데이트를 위한 키 접근
     uint64_t getPieceKey(Piece::PieceType type, Piece::PieceColor color, int x, int y) const;
-    uint64t getBlackTurnKey() const;
+    uint64_t getBlackTurnKey() const;
     uint64_t getCastleKey(Piece::PieceColor color, bool isKingSide) const;
     uint64_t getEnPassantKey(int x) const;
 

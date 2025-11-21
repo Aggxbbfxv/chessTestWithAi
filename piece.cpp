@@ -1,5 +1,7 @@
 #include "piece.h"
 #include "game.h"
+#include <cmath>
+#include <vector>
 
 using namespace std;
 
@@ -17,7 +19,6 @@ int Piece::getValue() const
     }
 }
 
-// [����ȭ] ���� �Լ��� ���� ������ ����
 static void addStraightMove(vector<Move>& moves, const Game& game, Piece::PieceColor color, int x, int y, int dx, int dy)
 {
     int newX = x + dx;
@@ -37,7 +38,7 @@ static void addStraightMove(vector<Move>& moves, const Game& game, Piece::PieceC
             {
                 moves.emplace_back(x, y, newX, newY);
             }
-            break; // ������ �ߴ�
+            break;
         }
 
         newX += dx;
@@ -57,10 +58,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
     if(oneStepY >= 0 && oneStepY < 8 && game.getPiece(x, oneStepY) == nullptr)
     {
         if (oneStepY == promotionRank) { // 프로모션
-            moves.emplace_back(x, y, x, oneStepY, Piece::QUEEN);
-            moves.emplace_back(x, y, x, oneStepY, Piece::ROOK);
-            moves.emplace_back(x, y, x, oneStepY, Piece::BISHOP);
-            moves.emplace_back(x, y, x, oneStepY, Piece::KNIGHT);
+            moves.emplace_back(x, y, x, oneStepY, (int)Piece::QUEEN);
+            moves.emplace_back(x, y, x, oneStepY, (int)Piece::ROOK);
+            moves.emplace_back(x, y, x, oneStepY, (int)Piece::BISHOP);
+            moves.emplace_back(x, y, x, oneStepY, (int)Piece::KNIGHT);
         } else {
             moves.emplace_back(x, y, x, oneStepY);
         }
@@ -88,10 +89,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
             if(leftTarget && leftTarget->getColor() != p_color)
             {
                 if (captureY == promotionRank) { // 프로모션
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::QUEEN);
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::ROOK);
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::BISHOP);
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::KNIGHT);
+                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::QUEEN);
+                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::ROOK);
+                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::BISHOP);
+                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::KNIGHT);
                 } else {
                     moves.emplace_back(x, y, x - 1, captureY);
                 }
@@ -104,12 +105,14 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
             if(rightTarget && rightTarget->getColor() != p_color)
             {
                 if (captureY == promotionRank) { // 프로모션
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::QUEEN);
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::ROOK);
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::BISHOP);
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::KNIGHT);
+                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::QUEEN);
+                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::ROOK);
+                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::BISHOP);
+                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::KNIGHT);
                 } else {
                     moves.emplace_back(x, y, x + 1, captureY);
+                }
+            }
         }
     }
 
@@ -119,10 +122,11 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
         int epX = epTarget % 8;
         int epY = epTarget / 8;
 
-        // 폰이 앙파상을 할 수 있는 올바른 랭크에 있는지 확인
-        if (y == epY - direction) {
-            if (abs(x - epX) == 1) { // 인접한 파일에 있는지 확인
-                moves.emplace_back(x, y, epX, epY, Move::EN_PASSANT);
+        if (y == ((p_color == Piece::WHITE) ? 3 : 4)) {
+             if (epX == x + 1 && epY == y + direction) {
+                moves.emplace_back(x, y, x + 1, y + direction, Move::EN_PASSANT);
+            } else if (epX == x - 1 && epY == y + direction) {
+                moves.emplace_back(x, y, x - 1, y + direction, Move::EN_PASSANT);
             }
         }
     }
@@ -210,7 +214,7 @@ void King::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
 
     // 캐슬링 로직 추가
     Piece::PieceColor enemyColor = (p_color == Piece::WHITE) ? Piece::BLACK : Piece::WHITE;
-    if (game.isCheck(p_color)) return; // 체크 상태에서는 캐슬링 불가
+    if (game.isCheck(p_color)) return;
 
     // 킹사이드 캐슬링
     if (game.canCastle(p_color, true))

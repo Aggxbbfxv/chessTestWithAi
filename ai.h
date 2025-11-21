@@ -7,7 +7,7 @@
 class AI
 {
 public:
-    static const int searchDepth = 5; // [조정됨] 깊이 7은 일반적인 엔진에서 최적화 없이 매우 느립니다. 테스트를 위해 4~5 정도로 낮추고, 최적화 후 올리는 것을 권장합니다.
+    static const int searchDepth = 6; // [조정됨] 깊이 7은 일반적인 엔진에서 최적화 없이 매우 느립니다. 테스트를 위해 4~5 정도로 낮추고, 최적화 후 올리는 것을 권장합니다.
     static Move findBestMove(const Game& game);
 
     static int nodeCount;

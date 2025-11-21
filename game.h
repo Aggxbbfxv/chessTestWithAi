@@ -16,19 +16,15 @@ struct UndoInfo
     bool b_castle_ks;
     bool b_castle_qs;
     int enPassantTargetSquare;
-    uint64_t currentHash; // 추가
+    int fiftyMoveCounter;
+    uint64_t currentHash;
 };
 
 class Game
 {
-// ... (rest of file is same until private members)
-    // 50수 규칙 카운터
-    int fiftyMoveCounter;
-
-    // Zobrist 해시
-    uint64_t currentHash;
-    std::vector<uint64_t> history;
-};
+    friend class AI;
+public:
+    enum GameState { IN_PROGRESS, CHECKMATE, STALEMATE, DRAW };
 
     Game();
     Game(const Game& other);
@@ -46,19 +42,18 @@ class Game
     bool isGameOver() const;
     GameState getGameState();
 
-
     std::vector<Move> generateMoves(Piece::PieceColor color);
 
     void setPiece(int x, int y, Piece* piece);
 
-    // 캐슬링 권한 확인용 public 함수
+    // Public utility functions
+    void switchTurn();
+    bool isCheck(Piece::PieceColor kingColor) const;
+    bool isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const;
     bool canCastle(Piece::PieceColor color, bool isKingSide) const;
     int getEnPassantTargetSquare() const { return enPassantTargetSquare; }
 
 private:
-    void switchTurn();
-    bool isCheck(Piece::PieceColor kingColor) const;
-    bool isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const;
     bool isInsufficientMaterial() const;
 
     Piece* m_board[8][8];
@@ -76,6 +71,13 @@ private:
 
     // 앙파상 타겟 (-1이면 없음)
     int enPassantTargetSquare;
+
+    // 50수 규칙 카운터
+    int fiftyMoveCounter;
+
+    // Zobrist 해시
+    uint64_t currentHash;
+    std::vector<uint64_t> history;
 };
 
 #endif // GAME_H
