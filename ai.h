@@ -1,4 +1,4 @@
-#ifndef AI_H
+﻿#ifndef AI_H
 #define AI_H
 
 #include <cstdint>
@@ -10,7 +10,7 @@
 class AI
 {
 public:
-    static const int searchDepth = 7;
+    static const int searchDepth = 4;
     static Move findBestMove(const Game& game);
 
     static int nodeCount;

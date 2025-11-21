@@ -271,6 +271,13 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maximizingPl
 
     uint64_t hash = computeHash(state);
     auto ttIt = transpositionTable.find(hash);
+    bool haveTTBest = false;
+    Move ttBestMove;
+    if (ttIt != transpositionTable.end())
+    {
+        ttBestMove = ttIt->second.bestMove;
+        haveTTBest = true;
+    }
     if (ttIt != transpositionTable.end() && ttIt->second.depth >= depth)
     {
         const TTEntry& entry = ttIt->second;
@@ -311,8 +318,17 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maximizingPl
                     killerBonusB = 4000;
             }
 
-            int scoreA = scoreMove(state, a, moverColor) + killerBonusA;
-            int scoreB = scoreMove(state, b, moverColor) + killerBonusB;
+            int ttBonusA = 0, ttBonusB = 0;
+            if (haveTTBest)
+            {
+                if (a.fromX == ttBestMove.fromX && a.fromY == ttBestMove.fromY && a.toX == ttBestMove.toX && a.toY == ttBestMove.toY)
+                    ttBonusA = 100000;
+                if (b.fromX == ttBestMove.fromX && b.fromY == ttBestMove.fromY && b.toX == ttBestMove.toX && b.toY == ttBestMove.toY)
+                    ttBonusB = 100000;
+            }
+
+            int scoreA = scoreMove(state, a, moverColor) + killerBonusA + ttBonusA;
+            int scoreB = scoreMove(state, b, moverColor) + killerBonusB + ttBonusB;
             return scoreA > scoreB;
         });
     };
@@ -411,6 +427,7 @@ Move AI::findBestMove(const Game& game)
     timer.start();
     nodeCount = 0;
     transpositionTable.clear();
+    transpositionTable.reserve(262144); // preallocate to reduce rehash overhead
 
     killerMoves.assign(searchDepth + 2, {});
     std::fill(&historyHeuristic[0][0][0][0], &historyHeuristic[0][0][0][0] + 8*8*8*8, 0);
