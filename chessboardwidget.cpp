@@ -165,13 +165,7 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
         }
 
         m_selectedPos = QPoint(col, row);
-        m_validMoves = m_game.generateMoves(m_game.getCurrentTurn());
-        
-        // Filter for moves from the selected piece
-        m_validMoves.erase(std::remove_if(m_validMoves.begin(), m_validMoves.end(),
-            [col, row](const Move& move) {
-                return move.fromX != col || move.fromY != row;
-            }), m_validMoves.end());
+        m_validMoves = m_game.generateMoves(col, row);
 
         update();
     } else {

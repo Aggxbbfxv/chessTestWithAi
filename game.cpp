@@ -498,6 +498,35 @@ bool Game::isInsufficientMaterial() const
     return false;
 }
 
+std::vector<Move> Game::generateMoves(int x, int y)
+{
+    std::vector<Move> legalMoves;
+    Piece* p = getPiece(x, y);
+    
+    if (!p || p->getColor() != p_currentTurn) return legalMoves;
+
+    std::vector<Move> possibleMoves;
+    possibleMoves.reserve(28); // 기물 하나당 최대 이동 수 (퀸 등)
+    
+    p->addPossibleMoves(*this, x, y, possibleMoves);
+
+    for(const auto& move : possibleMoves)
+    {
+        UndoInfo undo = this->makeMove(move);
+
+        // [수정] makeMove 후에는 턴이 바뀌므로 p_currentTurn은 상대방입니다.
+        // 이동한 기물의 색상(p->getColor())이 체크 상태인지 확인해야 합니다.
+        if(!this->isCheck(p->getColor()))
+        {
+            legalMoves.push_back(move);
+        }
+
+        this->unmakeMove(move, undo);
+    }
+
+    return legalMoves;
+}
+
 vector<Move> Game::generateMoves(Piece::PieceColor color)
 {
     vector<Move> possibleMoves;

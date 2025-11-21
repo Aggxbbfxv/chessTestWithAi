@@ -42,6 +42,8 @@ public:
     bool isGameOver() const;
     GameState getGameState();
 
+    // [최적화] 특정 위치의 기물에 대한 이동만 생성
+    std::vector<Move> generateMoves(int x, int y);
     std::vector<Move> generateMoves(Piece::PieceColor color);
 
     void setPiece(int x, int y, Piece* piece);
