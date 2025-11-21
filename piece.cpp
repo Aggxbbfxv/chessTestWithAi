@@ -17,7 +17,7 @@ int Piece::getValue() const
     }
 }
 
-// [����ȭ] ���� �Լ��� ���� ������ ����
+// [����ȭ] ���� �Լ��� ���� ������ ����
 static void addStraightMove(vector<Move>& moves, const Game& game, Piece::PieceColor color, int x, int y, int dx, int dy)
 {
     int newX = x + dx;
@@ -37,7 +37,7 @@ static void addStraightMove(vector<Move>& moves, const Game& game, Piece::PieceC
             {
                 moves.emplace_back(x, y, newX, newY);
             }
-            break; // ������ �ߴ�
+            break; // ������ �ߴ�
         }
 
         newX += dx;
@@ -50,13 +50,23 @@ Piece* Pawn::clone() const { return new Pawn(*this); }
 void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
 {
     int direction = (p_color == Piece::WHITE) ? -1 : 1;
-    int startRow = (p_color == Piece::WHITE) ? 6 : 1;
+    int promotionRank = (p_color == Piece::WHITE) ? 0 : 7;
 
+    // 한 칸 전진
     int oneStepY = y + direction;
     if(oneStepY >= 0 && oneStepY < 8 && game.getPiece(x, oneStepY) == nullptr)
     {
-        moves.emplace_back(x, y, x, oneStepY);
+        if (oneStepY == promotionRank) { // 프로모션
+            moves.emplace_back(x, y, x, oneStepY, Piece::QUEEN);
+            moves.emplace_back(x, y, x, oneStepY, Piece::ROOK);
+            moves.emplace_back(x, y, x, oneStepY, Piece::BISHOP);
+            moves.emplace_back(x, y, x, oneStepY, Piece::KNIGHT);
+        } else {
+            moves.emplace_back(x, y, x, oneStepY);
+        }
 
+        // 두 칸 전진 (첫 수일 때)
+        int startRow = (p_color == Piece::WHITE) ? 6 : 1;
         if(y == startRow)
         {
             int twoStepY = y + 2 * direction;
@@ -67,23 +77,52 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
         }
     }
 
-    int CaptureY = y + direction;
-    if(CaptureY >= 0 && CaptureY < 8)
+    // 대각선 캡처
+    int captureY = y + direction;
+    if(captureY >= 0 && captureY < 8)
     {
+        // 왼쪽 캡처
         if(x > 0)
         {
-            Piece* leftTarget = game.getPiece(x - 1, CaptureY);
+            Piece* leftTarget = game.getPiece(x - 1, captureY);
             if(leftTarget && leftTarget->getColor() != p_color)
             {
-                moves.emplace_back(x, y, x - 1, CaptureY);
+                if (captureY == promotionRank) { // 프로모션
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::QUEEN);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::ROOK);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::BISHOP);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::KNIGHT);
+                } else {
+                    moves.emplace_back(x, y, x - 1, captureY);
+                }
             }
         }
+        // 오른쪽 캡처
         if(x < 7)
         {
-            Piece* rightTarget = game.getPiece(x + 1, CaptureY);
+            Piece* rightTarget = game.getPiece(x + 1, captureY);
             if(rightTarget && rightTarget->getColor() != p_color)
             {
-                moves.emplace_back(x, y, x + 1, CaptureY);
+                if (captureY == promotionRank) { // 프로모션
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::QUEEN);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::ROOK);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::BISHOP);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::KNIGHT);
+                } else {
+                    moves.emplace_back(x, y, x + 1, captureY);
+        }
+    }
+
+    // 앙파상 로직
+    int epTarget = game.getEnPassantTargetSquare();
+    if (epTarget != -1) {
+        int epX = epTarget % 8;
+        int epY = epTarget / 8;
+
+        // 폰이 앙파상을 할 수 있는 올바른 랭크에 있는지 확인
+        if (y == epY - direction) {
+            if (abs(x - epX) == 1) { // 인접한 파일에 있는지 확인
+                moves.emplace_back(x, y, epX, epY, Move::EN_PASSANT);
             }
         }
     }
@@ -165,6 +204,38 @@ void King::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
                 {
                     moves.emplace_back(x, y, newX, newY);
                 }
+            }
+        }
+    }
+
+    // 캐슬링 로직 추가
+    Piece::PieceColor enemyColor = (p_color == Piece::WHITE) ? Piece::BLACK : Piece::WHITE;
+    if (game.isCheck(p_color)) return; // 체크 상태에서는 캐슬링 불가
+
+    // 킹사이드 캐슬링
+    if (game.canCastle(p_color, true))
+    {
+        if (game.getPiece(x + 1, y) == nullptr && game.getPiece(x + 2, y) == nullptr)
+        {
+            if (!game.isSquareAttacked(x, y, enemyColor) &&
+                !game.isSquareAttacked(x + 1, y, enemyColor) &&
+                !game.isSquareAttacked(x + 2, y, enemyColor))
+            {
+                moves.emplace_back(x, y, x + 2, y, Move::CASTLE_KS);
+            }
+        }
+    }
+
+    // 퀸사이드 캐슬링
+    if (game.canCastle(p_color, false))
+    {
+        if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr && game.getPiece(x - 3, y) == nullptr)
+        {
+            if (!game.isSquareAttacked(x, y, enemyColor) &&
+                !game.isSquareAttacked(x - 1, y, enemyColor) &&
+                !game.isSquareAttacked(x - 2, y, enemyColor))
+            {
+                moves.emplace_back(x, y, x - 2, y, Move::CASTLE_QS);
             }
         }
     }

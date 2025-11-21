@@ -172,11 +172,11 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
         int maxEval = -200000;
         for(const auto& move : allMoves)
         {
-            Piece* captured = state.makeMove(move);
+            UndoInfo undo = state.makeMove(move);
             
             int evalScore = alphabeta(state, depth - 1, alpha, beta, false);
 
-            state.unmakeMove(move, captured);
+            state.unmakeMove(move, undo);
 
             maxEval = max(maxEval, evalScore);
             alpha = max(alpha, evalScore);
@@ -190,11 +190,11 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
         int minEval = 200000;
         for(const auto& move : allMoves)
         {
-            Piece* captured = state.makeMove(move);
+            UndoInfo undo = state.makeMove(move);
 
             int evalScore = alphabeta(state, depth - 1, alpha, beta, true);
 
-            state.unmakeMove(move, captured);
+            state.unmakeMove(move, undo);
 
             minEval = min(minEval, evalScore);
             beta = min(beta, evalScore);
@@ -223,10 +223,6 @@ Move AI::findBestMove(const Game& game)
     vector<Move> rootMoves = rootGame.generateMoves(aiColor);
     
     if(rootMoves.empty()) return Move();
-
-    // [최적화] Iterative Deepening (반복 심화)
-    // 깊이 1부터 목표 깊이까지 점진적으로 탐색합니다.
-    // 이전 깊이에서 찾은 좋은 수를 다음 깊이 탐색의 맨 앞으로 보내어 가지치기 효율을 높입니다.
     
     // 초기 정렬 (MVV-LVA)
     std::sort(rootMoves.begin(), rootMoves.end(), [&](const Move& a, const Move& b) {
@@ -238,36 +234,28 @@ Move AI::findBestMove(const Game& game)
     for (const auto& m : rootMoves) scoredMoves.push_back({m, -200000});
 
     Move bestMoveSoFar;
-    int bestScoreSoFar = -200000;
 
     for (int currentDepth = 1; currentDepth <= searchDepth; ++currentDepth)
     {
         int alpha = -200000;
         int beta = 200000;
-        int iterationBestScore = -200000;
-        Move iterationBestMove;
-
+        
         // 이번 깊이(currentDepth)에서 모든 루트 수 탐색
-        for (int i = 0; i < scoredMoves.size(); ++i)
+        for (size_t i = 0; i < scoredMoves.size(); ++i)
         {
             Move move = scoredMoves[i].move;
-            Piece* captured = rootGame.makeMove(move);
+            UndoInfo undo = rootGame.makeMove(move);
 
-            // 재귀 호출
+            // 재귀 호출 (AI가 수를 뒀으므로 다음은 상대방 턴, 즉 min-node)
             int score = alphabeta(rootGame, currentDepth - 1, alpha, beta, false);
             
-            rootGame.unmakeMove(move, captured);
+            rootGame.unmakeMove(move, undo);
+
+            // 루트 노드는 max-node 이므로, alpha 값을 업데이트
+            alpha = std::max(alpha, score);
 
             // 점수 기록
             scoredMoves[i].score = score;
-
-            if (score > iterationBestScore) {
-                iterationBestScore = score;
-                iterationBestMove = move;
-            }
-
-            // Alpha 업데이트 (루트 노드이므로)
-            alpha = std::max(alpha, score);
         }
 
         // [핵심] 점수 높은 순으로 정렬 (다음 깊이 탐색 시 좋은 수를 먼저 보기 위함)
@@ -275,18 +263,20 @@ Move AI::findBestMove(const Game& game)
             return a.score > b.score;
         });
 
-        bestScoreSoFar = scoredMoves[0].score; // 정렬 후 0번이 베스트
         bestMoveSoFar = scoredMoves[0].move;
 
         // (선택 사항) 시간이 너무 오래 걸리면 중단하는 로직을 여기에 추가 가능
-        // if (timer.elapsed() > 1000) break; 
+        // if (timer.elapsed() > 5000) { 
+        //     qDebug() << "Time limit exceeded, breaking at depth " << currentDepth;
+        //     break; 
+        // }
     }
 
     qDebug() << "========================================";
-    qDebug() << "AI Iterative Depth:" << searchDepth;
+    qDebug() << "AI Iterative Depth:" << searchDepth; 
     qDebug() << "Time Elapsed:" << timer.elapsed() << "ms"; 
     qDebug() << "Nodes Visited:" << nodeCount;
-    qDebug() << "Best Move Score:" << bestScoreSoFar;
+    qDebug() << "Best Move Score:" << scoredMoves[0].score;
     qDebug() << "========================================";
 
     return bestMoveSoFar;
