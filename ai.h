@@ -1,6 +1,7 @@
 #ifndef AI_H
 #define AI_H
 
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 #include "game.h"

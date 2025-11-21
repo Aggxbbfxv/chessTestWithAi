@@ -1,8 +1,8 @@
-#include "chessboardwidget.h"
+ï»¿#include "chessboardwidget.h"
 #include <QDebug>
 #include <QCoreApplication>
-// QPainter, QFont, QColor µîÀº chessboardwidget.h¿¡ ÀÌ¹Ì Æ÷ÇÔµÈ
-// <QPainter>, <QMouseEvent> µîÀ» ÅëÇØ °£Á¢ÀûÀ¸·Î Æ÷ÇÔµË´Ï´Ù.
+// QPainter, QFont, QColor ë“±ì€ chessboardwidget.hì— ì´ë¯¸ í¬í•¨ëœ
+// <QPainter>, <QMouseEvent> ë“±ì„ í†µí•´ ê°„ì ‘ì ìœ¼ë¡œ í¬í•¨ë©ë‹ˆë‹¤.
 
 ChessBoardWidget::ChessBoardWidget(QWidget *parent)
     : QWidget(parent), m_selectedPos(-1, -1), m_currentMode(customMode)
@@ -36,10 +36,10 @@ void ChessBoardWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing); // ¾ÈÆ¼¾Ù¸®¾î½ÌÀ¸·Î ºÎµå·´°Ô
+    painter.setRenderHint(QPainter::Antialiasing); // ì•ˆí‹°ì•¨ë¦¬ì–´ì‹±ìœ¼ë¡œ ë¶€ë“œëŸ½ê²Œ
 
     drawBoard(painter);
-    drawHighlights(painter); // Á¶°¢(drawPieces)º¸´Ù ¸ÕÀú ±×·Á¾ß ÇÏÀÌ¶óÀÌÆ®°¡ Á¶°¢À» µ¤Áö ¾Ê½À´Ï´Ù.
+    drawHighlights(painter); // ì¡°ê°(drawPieces)ë³´ë‹¤ ë¨¼ì € ê·¸ë ¤ì•¼ í•˜ì´ë¼ì´íŠ¸ê°€ ì¡°ê°ì„ ë®ì§€ ì•ŠìŠµë‹ˆë‹¤.
     drawPieces(painter);
 }
 
@@ -50,9 +50,9 @@ void ChessBoardWidget::drawBoard(QPainter &painter)
 
     for (int row = 0; row < 8; ++row) {
         for (int col = 0; col < 8; ++col) {
-            // Å¬·¡½ÄÇÑ ³ª¹« ´À³¦ÀÇ »ö»ó (±âÁ¸ ÄÚµå À¯Áö)
-            if ((row + col) % 2 == 0) painter.setBrush(QColor(240, 217, 181)); // ¹àÀº Ä­
-            else painter.setBrush(QColor(181, 136, 99)); // ¾îµÎ¿î Ä­
+            // í´ë˜ì‹í•œ ë‚˜ë¬´ ëŠë‚Œì˜ ìƒ‰ìƒ (ê¸°ì¡´ ì½”ë“œ ìœ ì§€)
+            if ((row + col) % 2 == 0) painter.setBrush(QColor(240, 217, 181)); // ë°ì€ ì¹¸
+            else painter.setBrush(QColor(181, 136, 99)); // ì–´ë‘ìš´ ì¹¸
 
             painter.setPen(Qt::NoPen);
             painter.drawRect(col * w, row * h, w, h);
@@ -65,10 +65,10 @@ void ChessBoardWidget::drawPieces(QPainter &painter)
     int w = width() / 8;
     int h = height() / 8;
 
-    // [¼öÁ¤] ±âº» ÆùÆ®¸¦ °¡Á®¿Í¼­ Å©±â¿Í ±½±â¸¸ Á¶Àı
+    // [ìˆ˜ì •] ê¸°ë³¸ í°íŠ¸ë¥¼ ê°€ì ¸ì™€ì„œ í¬ê¸°ì™€ êµµê¸°ë§Œ ì¡°ì ˆ
     QFont font = painter.font();
-    font.setPixelSize(qMin(w, h) * 0.75); // Å©±â´Â 0.8º¸´Ù ¾à°£ ÁÙ¿©¼­ (0.75)
-    font.setBold(true); // [Ãß°¡] ±ÛÀÚ¸¦ ±½°Ô Ç¥½Ã
+    font.setPixelSize(qMin(w, h) * 0.75); // í¬ê¸°ëŠ” 0.8ë³´ë‹¤ ì•½ê°„ ì¤„ì—¬ì„œ (0.75)
+    font.setBold(true); // [ì¶”ê°€] ê¸€ìë¥¼ êµµê²Œ í‘œì‹œ
     painter.setFont(font);
 
     for (int row = 0; row < 8; ++row) {
@@ -78,7 +78,7 @@ void ChessBoardWidget::drawPieces(QPainter &painter)
 
             QString text;
 
-            // [¼öÁ¤] ±âÈ£¸¦ ´Ù½Ã ¿µ¹®ÀÚ·Î º¯°æ
+            // [ìˆ˜ì •] ê¸°í˜¸ë¥¼ ë‹¤ì‹œ ì˜ë¬¸ìë¡œ ë³€ê²½
             switch (p->getType()) {
             case Piece::PAWN: text = "P"; break;
             case Piece::ROOK: text = "R"; break;
@@ -89,11 +89,11 @@ void ChessBoardWidget::drawPieces(QPainter &painter)
             default: text = "?"; break;
             }
 
-            // [À¯Áö] »ö»óÀº ¼¼·ÃµÈ Èæ/¹éÀ» ±×´ë·Î »ç¿ë
+            // [ìœ ì§€] ìƒ‰ìƒì€ ì„¸ë ¨ëœ í‘/ë°±ì„ ê·¸ëŒ€ë¡œ ì‚¬ìš©
             if (p->getColor() == Piece::WHITE) {
-                painter.setPen(QColor(245, 245, 245)); // ¹àÀº È¸»ö (Èò»ö ±â¹°)
+                painter.setPen(QColor(245, 245, 245)); // ë°ì€ íšŒìƒ‰ (í°ìƒ‰ ê¸°ë¬¼)
             } else { // Piece::BLACK
-                painter.setPen(QColor(30, 30, 30)); // ¾îµÎ¿î È¸»ö (°ËÀº»ö ±â¹°)
+                painter.setPen(QColor(30, 30, 30)); // ì–´ë‘ìš´ íšŒìƒ‰ (ê²€ì€ìƒ‰ ê¸°ë¬¼)
             }
 
             painter.drawText(col * w, row * h, w, h, Qt::AlignCenter, text);
@@ -107,16 +107,16 @@ void ChessBoardWidget::drawHighlights(QPainter &painter)
     int h = height() / 8;
 
     if (m_selectedPos.x() != -1) {
-        // [¼öÁ¤] ¼±ÅÃµÈ ±â¹° (¼±¸íÇÑ ³ë¶õ»ö Å×µÎ¸®)
-        painter.setPen(QPen(QColor(255, 215, 0, 220), 4)); // ±½±â 4, °ñµå ¿»·Î¿ì
+        // [ìˆ˜ì •] ì„ íƒëœ ê¸°ë¬¼ (ì„ ëª…í•œ ë…¸ë€ìƒ‰ í…Œë‘ë¦¬)
+        painter.setPen(QPen(QColor(255, 215, 0, 220), 4)); // êµµê¸° 4, ê³¨ë“œ ì˜ë¡œìš°
         painter.setBrush(Qt::NoBrush);
-        painter.drawRect(m_selectedPos.x() * w + 2, m_selectedPos.y() * h + 2, w - 4, h - 4); // Å×µÎ¸®°¡ Àß¸®Áö ¾Ê°Ô ¾ÈÂÊÀ¸·Î
+        painter.drawRect(m_selectedPos.x() * w + 2, m_selectedPos.y() * h + 2, w - 4, h - 4); // í…Œë‘ë¦¬ê°€ ì˜ë¦¬ì§€ ì•Šê²Œ ì•ˆìª½ìœ¼ë¡œ
 
-        // [¼öÁ¤] ÀÌµ¿ °¡´É À§Ä¡ (¿¬ÇÑ ³ë¶õ»ö ¿ø)
+        // [ìˆ˜ì •] ì´ë™ ê°€ëŠ¥ ìœ„ì¹˜ (ì—°í•œ ë…¸ë€ìƒ‰ ì›)
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(255, 215, 0, 70)); // ¿¬ÇÑ °ñµå ¿»·Î¿ì (Åõ¸íµµ 70)
+        painter.setBrush(QColor(255, 215, 0, 70)); // ì—°í•œ ê³¨ë“œ ì˜ë¡œìš° (íˆ¬ëª…ë„ 70)
         for (const Move& m : m_validMoves) {
-            // »ç°¢Çü ´ë½Å Áß¾Ó¿¡ ¿øÀ» ±×·Á ´õ ºÎµå·´°Ô Ç¥½Ã
+            // ì‚¬ê°í˜• ëŒ€ì‹  ì¤‘ì•™ì— ì›ì„ ê·¸ë ¤ ë” ë¶€ë“œëŸ½ê²Œ í‘œì‹œ
             QPoint center(m.toX * w + w / 2, m.toY * h + h / 2);
             painter.drawEllipse(center, w / 4, h / 4);
         }
@@ -127,8 +127,8 @@ void ChessBoardWidget::drawHighlights(QPainter &painter)
 
 void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
 {
-    // [¼öÁ¤] ÀÌ ÇÔ¼ö´Â ½Ã°¢Àû ¿ä¼Ò°¡ ¾Æ´Ñ ·ÎÁ÷ ºÎºĞÀÌ¹Ç·Î ¿øº» ÄÚµå¸¦ ±×´ë·Î À¯ÁöÇÕ´Ï´Ù.
-    // (±âÁ¸ ÄÚµå¿Í µ¿ÀÏ)
+    // [ìˆ˜ì •] ì´ í•¨ìˆ˜ëŠ” ì‹œê°ì  ìš”ì†Œê°€ ì•„ë‹Œ ë¡œì§ ë¶€ë¶„ì´ë¯€ë¡œ ì›ë³¸ ì½”ë“œë¥¼ ê·¸ëŒ€ë¡œ ìœ ì§€í•©ë‹ˆë‹¤.
+    // (ê¸°ì¡´ ì½”ë“œì™€ ë™ì¼)
 
     int w = width() / 8;
     int h = height() / 8;
@@ -139,48 +139,51 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
 
     if (col < 0 || col >= 8 || row < 0 || row >= 8) return;
 
-    // 1. ±â¹° ÀÌµ¿ ½Ãµµ (ÀÌ¹Ì ¼±ÅÃµÈ »óÅÂ¿¡¼­ Å¬¸¯)
+    // 1. ê¸°ë¬¼ ì´ë™ ì‹œë„ (ì´ë¯¸ ì„ íƒëœ ìƒíƒœì—ì„œ í´ë¦­)
     if (m_selectedPos.x() != -1) {
         for (const Move& m : m_validMoves) {
             if (m.toX == col && m.toY == row) {
 
-                // [»ç¶÷] ÀÌµ¿ ½ÇÇà
+                // [ì‚¬ëŒ] ì´ë™ ì‹¤í–‰
                 Piece* captured = m_game.makeMove(m);
                 if (captured != nullptr) {
-                    delete captured; // ÀâÈù ±â¹° ¸Ş¸ğ¸® ÇØÁ¦
+                    delete captured; // ì¡íŒ ê¸°ë¬¼ ë©”ëª¨ë¦¬ í•´ì œ
                 }
 
-                // ¼±ÅÃ ÃÊ±âÈ­ ¹× È­¸é °»½Å
+                // ì„ íƒ ì´ˆê¸°í™” ë° í™”ë©´ ê°±ì‹ 
                 m_selectedPos = QPoint(-1, -1);
                 m_validMoves.clear();
-                repaint(); // AI °è»ê Àü¿¡ »ç¶÷ÀÌ µĞ °ÍÀ» ¸ÕÀú È­¸é¿¡ Ç¥½Ã
-                QCoreApplication::processEvents(); // UI ¹İÀÀ¼º È®º¸
+                repaint(); // AI ê³„ì‚° ì „ì— ì‚¬ëŒì´ ë‘” ê²ƒì„ ë¨¼ì € í™”ë©´ì— í‘œì‹œ
+                QCoreApplication::processEvents(); // UI ë°˜ì‘ì„± í™•ë³´
 
-                // [AI] ÅÏ ÁøÇà (AI ¸ğµåÀÌ°í °ÔÀÓÀÌ ¾È ³¡³µ´Ù¸é)
+                // [AI] í„´ ì§„í–‰ (AI ëª¨ë“œì´ê³  ê²Œì„ì´ ì•ˆ ëë‚¬ë‹¤ë©´)
                 if (m_currentMode == aiMode && !m_game.isGameOver()) {
 
-                    // ÀÛ¼ºÇØÁÖ½Å AI ÄÚµå¸¦ ±×´ë·Î »ç¿ëÇÕ´Ï´Ù.
+                    // ì‘ì„±í•´ì£¼ì‹  AI ì½”ë“œë¥¼ ê·¸ëŒ€ë¡œ ì‚¬ìš©í•©ë‹ˆë‹¤.
                     Move aiMove = AI::findBestMove(m_game);
 
                     if (!aiMove.isNull()) {
-                        m_game.makeMove(aiMove);
+                        Piece* aiCaptured = m_game.makeMove(aiMove);
+                        if (aiCaptured) {
+                            delete aiCaptured;
+                        }
                         qDebug() << "AI Moved:" << aiMove.fromX << aiMove.fromY << "->" << aiMove.toX << aiMove.toY;
                     } else {
                         qDebug() << "AI cannot move (Stalemate or Checkmate?)";
                     }
-                    update(); // AI ÀÌµ¿ ÈÄ È­¸é °»½Å
+                    update(); // AI ì´ë™ í›„ í™”ë©´ ê°±ì‹ 
                 }
                 return;
             }
         }
     }
 
-    // 2. ±â¹° ¼±ÅÃ (ÀÌµ¿ÀÌ ¾Æ´Ñ °æ¿ì)
+    // 2. ê¸°ë¬¼ ì„ íƒ (ì´ë™ì´ ì•„ë‹Œ ê²½ìš°)
     Piece* p = m_game.getPiece(col, row);
 
-    // ³» ÅÏÀÎ ±â¹°¸¸ ¼±ÅÃ °¡´É (AI ¸ğµåÀÏ ¶§ Èæ»ö ±â¹°Àº ¼±ÅÃ ºÒ°¡)
+    // ë‚´ í„´ì¸ ê¸°ë¬¼ë§Œ ì„ íƒ ê°€ëŠ¥ (AI ëª¨ë“œì¼ ë•Œ í‘ìƒ‰ ê¸°ë¬¼ì€ ì„ íƒ ë¶ˆê°€)
     if (p && p->getColor() == m_game.getCurrentTurn()) {
-        // AI ¸ğµå¿¡¼­ »ç¿ëÀÚ°¡ AI ÅÏ(Èæ»ö)ÀÇ ±â¹°À» Å¬¸¯ÇÏ·Á ÇÏ¸é ¹«½Ã
+        // AI ëª¨ë“œì—ì„œ ì‚¬ìš©ìê°€ AI í„´(í‘ìƒ‰)ì˜ ê¸°ë¬¼ì„ í´ë¦­í•˜ë ¤ í•˜ë©´ ë¬´ì‹œ
         if (m_currentMode == aiMode && p->getColor() == Piece::BLACK) {
             return;
         }
@@ -189,7 +192,7 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
         std::vector<Move> allMoves = m_game.generateMoves(m_game.getCurrentTurn());
         m_validMoves.clear();
 
-        // ¼±ÅÃÇÑ ±â¹°ÀÇ ÀÌµ¿ °æ·Î¸¸ ÇÊÅÍ¸µ
+        // ì„ íƒí•œ ê¸°ë¬¼ì˜ ì´ë™ ê²½ë¡œë§Œ í•„í„°ë§
         for (const Move& m : allMoves) {
             if (m.fromX == col && m.fromY == row) {
                 m_validMoves.push_back(m);
@@ -197,9 +200,10 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
         }
         update();
     } else {
-        // ºó °÷ Å¬¸¯ ½Ã ¼±ÅÃ ÇØÁ¦
+        // ë¹ˆ ê³³ í´ë¦­ ì‹œ ì„ íƒ í•´ì œ
         m_selectedPos = QPoint(-1, -1);
         m_validMoves.clear();
         update();
     }
 }
+
