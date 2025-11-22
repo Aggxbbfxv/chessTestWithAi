@@ -73,19 +73,6 @@ void TranspositionTable::store(uint64_t key, int depth, int score, int flag, Mov
 // PeSTO Piece-Square Tables (Flipped for Black handled in eval)
 // ============================================================================
 
-// PeSTO values are designed for White perspective.
-// Index 0 = A1, 7 = H1, 56 = A8, 63 = H8.
-// Our board is 0,0 (Top-Left, A8) to 7,7 (Bottom-Right, H1) usually?
-// Let's check Game::resetBoard:
-// m_board[0][0] is Black Rook (A8). m_board[0][7] is White Rook (A1).
-// So x=0..7 (Files A..H), y=0..7 (Ranks 8..1).
-// PeSTO tables usually defined rank-by-rank from rank 1 to 8 or 8 to 1.
-// Let's assume standard Little-Endian Rank-File mapping for PeSTO and map our x,y to it.
-// PeSTO: sq = 8 * rank + file. (Rank 0=1st rank, Rank 7=8th rank).
-// Our y: 0=8th rank, 7=1st rank.
-// So Rank = 7 - y. File = x.
-// Index = 8 * (7 - y) + x.
-
 // Midgame Piece Values
 const int AI::mg_value[6] = { 82, 337, 365, 477, 1025, 0 };
 const int AI::eg_value[6] = { 94, 281, 297, 512,  936, 0 };
@@ -233,10 +220,6 @@ int AI::eval(const Game& game, Chess::PieceColor colorToMax)
     int egScore = 0;
     int gamePhase = 0;
 
-    // Game Phase Calculation
-    // Pawn=0, Knight=1, Bishop=1, Rook=2, Queen=4. Total = 24.
-    // We will use a simpler non-incremental approach for safety.
-
     for(int x = 0; x < 8; ++x)
     {
         for(int y = 0; y < 8; ++y)
@@ -247,24 +230,6 @@ int AI::eval(const Game& game, Chess::PieceColor colorToMax)
                 int pt = p->getType();
                 int pc = p->getColor();
                 
-                // Calculate Table Index
-                // White: y=7 is Rank 1 (Index 0..7). y=0 is Rank 8 (Index 56..63).
-                // PeSTO: Rank 1 is 0..7.
-                // So for White: Rank = 7 - y. Index = (7-y)*8 + x.
-                // For Black: Mirror the board. Rank 8 is Rank 1 for Black.
-                // Black y=0 is Rank 8 (Back rank). Relative Rank 1.
-                // So for Black: Rank = y. Index = y*8 + x.
-                // Wait, PeSTO tables are from White's perspective.
-                // If Black is at y=0 (A8), that is like White at A1.
-                // So for Black piece at x,y:
-                // We want to look up the value as if it was White piece at x, (7-y).
-                // Example: Black Pawn at A7 (0, 1). Equivalent to White Pawn at A2 (0, 6).
-                // White A2 index: (7-6)*8 + 0 = 8.
-                // Black A7 index: (7-1)*8 + 0 = 48? No.
-                // Let's stick to: Table is defined for White.
-                // White Piece at (x,y): Index = (7-y)*8 + x.
-                // Black Piece at (x,y): Index = (y)*8 + x. (Flip Rank).
-
                 int tableIdx;
                 if (pc == Chess::WHITE) tableIdx = (7 - y) * 8 + x;
                 else                    tableIdx = y * 8 + x;
@@ -291,9 +256,6 @@ int AI::eval(const Game& game, Chess::PieceColor colorToMax)
         }
     }
 
-    // Tapered Evaluation
-    // Phase: 24 (Start) -> 0 (End)
-    // Score = (mgScore * phase + egScore * (24 - phase)) / 24
     if (gamePhase > 24) gamePhase = 24;
     int finalScore = (mgScore * gamePhase + egScore * (24 - gamePhase)) / 24;
 
@@ -314,21 +276,24 @@ int AI::scoreMove(const Game& game, const Move& move, const Move& ttMove)
 
     // 2. Captures (MVV-LVA)
     Piece* target = game.getPiece(move.toX, move.toY);
-    if (target != nullptr)
+    if (target != nullptr || move.moveType == Move::EN_PASSANT)
     {
         Piece* attacker = game.getPiece(move.fromX, move.fromY);
-        // Victim Value: Queen=5, Rook=4, Bishop=3, Knight=2, Pawn=1
-        // Attacker Value: Pawn=1 ... Queen=5
-        // Score = 10 * Victim - Attacker
+        
         int victimVal = 0;
-        switch(target->getType()) {
-            case Chess::QUEEN: victimVal = 5; break;
-            case Chess::ROOK: victimVal = 4; break;
-            case Chess::BISHOP: victimVal = 3; break;
-            case Chess::KNIGHT: victimVal = 2; break;
-            case Chess::PAWN: victimVal = 1; break;
-            default: break;
+        if (move.moveType == Move::EN_PASSANT) {
+            victimVal = 1; // Pawn
+        } else if (target) {
+            switch(target->getType()) {
+                case Chess::QUEEN: victimVal = 5; break;
+                case Chess::ROOK: victimVal = 4; break;
+                case Chess::BISHOP: victimVal = 3; break;
+                case Chess::KNIGHT: victimVal = 2; break;
+                case Chess::PAWN: victimVal = 1; break;
+                default: break;
+            }
         }
+
         int attackerVal = 0;
         if (attacker) {
             switch(attacker->getType()) {
@@ -350,8 +315,6 @@ int AI::scoreMove(const Game& game, const Move& move, const Move& ttMove)
 
     // 4. Killer Moves (TODO)
     
-    // 5. History Heuristic (TODO)
-
     return 0;
 }
 
@@ -363,7 +326,7 @@ int AI::quiescence(Game& state, int alpha, int beta, Chess::PieceColor aiColor)
 {
     qNodeCount++;
 
-    // 1. Stand-pat (Evaluation of current position)
+    // 1. Stand-pat
     int stand_pat = eval(state, aiColor);
 
     if (stand_pat >= beta)
@@ -373,14 +336,12 @@ int AI::quiescence(Game& state, int alpha, int beta, Chess::PieceColor aiColor)
         alpha = stand_pat;
 
     // 2. Generate Captures Only
-    // Optimization: generateMoves(color) generates all moves. 
-    // We should ideally have generateCaptures. For now, filter them.
     std::vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
     std::vector<Move> captures;
     captures.reserve(allMoves.size());
 
     for (const auto& m : allMoves) {
-        if (state.getPiece(m.toX, m.toY) != nullptr) { // Is Capture
+        if (state.getPiece(m.toX, m.toY) != nullptr || m.moveType == Move::EN_PASSANT) { // Is Capture
             captures.push_back(m);
         }
     }
@@ -395,21 +356,8 @@ int AI::quiescence(Game& state, int alpha, int beta, Chess::PieceColor aiColor)
         UndoInfo undo = state.makeMove(move);
         
         // Check legality (king safety)
-        if (state.isCheck(undo.capturedPieceColor == Chess::WHITE ? Chess::BLACK : Chess::WHITE)) {
-             // makeMove switched turn, so we check if the side that just moved is in check
-             // Wait, makeMove switches turn. 
-             // If White moved, now it's Black's turn.
-             // We need to check if White King is in check.
-             // undo.capturedPieceColor is the color of the VICTIM.
-             // If White captures Black pawn, victim is Black.
-             // This logic is confusing. Let's use state.isCheck(movedColor).
-             // But we don't have movedColor easily.
-             // Let's rely on the fact that generateMoves returns pseudo-legal moves,
-             // but we need to verify legality if we didn't use the full legal generation.
-             // game.generateMoves ALREADY checks legality!
-             // So we don't need to check again.
-        }
-
+        // Note: generateMoves already checks legality, so we are safe.
+        
         int score = -quiescence(state, -beta, -alpha, aiColor);
         state.unmakeMove(move, undo);
 
@@ -435,96 +383,29 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Ches
     if (gameState != Game::IN_PROGRESS)
     {
         if (gameState == Game::CHECKMATE) {
-            // If current turn is AI (maxing), AI is mated -> -Infinity
-            // If current turn is Opponent (minimizing), Opponent is mated -> +Infinity
-            // Note: 'maxing' variable tracks if we are maximizing for aiColor.
-            // If maxing is true, it means it is AI's turn in the recursive sense?
-            // No, maxing toggles.
-            // Let's stick to standard NegaMax or Minimax.
-            // This function uses Minimax structure (maxing bool).
-            
-            // If I am maximizing, and it is checkmate, it means *I* have no moves. I lost.
-            // So return -Score.
             return maxing ? (-100000 - depth) : (100000 + depth);
         }
         return 0; // Draw
     }
 
-    // 1. Transposition Table Probe
-    // We need a hash key. Game class has currentHash.
-    // Note: We need to be careful with Zobrist keys matching the side to move.
-    // Our Zobrist implementation includes side to move.
-    // However, we need to store scores relative to the side to move for NegaMax, 
-    // or absolute for Minimax.
-    // This implementation is Minimax (maxing/minimizing separate loops).
-    // Let's store absolute scores (always from AI's perspective).
-    
-    // Actually, let's switch to NegaMax style for cleaner code? 
-    // Too risky to refactor everything. Stick to Minimax.
-    // TT Score storage: Always store from AI's perspective?
-    // Yes, eval() returns score from AI's perspective.
-    
-    // We can't easily use TT for pruning in Minimax if we don't handle min/max flags carefully.
-    // Let's just use TT for Move Ordering for now to be safe, 
-    // and simple Exact match pruning.
-    
-    // 2. Quiescence Search at Leaf
+    // 1. Quiescence Search at Leaf
     if(depth == 0)
     {
-        // Switch to NegaMax style for Quiescence?
-        // Quiescence is implemented as NegaMax (returns score for side to move).
-        // But our eval returns score for AI.
-        // Let's wrap it.
-        
-        // If maxing (AI turn), we want max score.
-        // If minimizing (Opponent turn), we want min score (which is max score for opponent).
-        // Our quiescence returns score from side-to-move perspective?
-        // Let's look at quiescence implementation above:
-        // int stand_pat = eval(state, aiColor); -> Returns AI score.
-        // This assumes eval always returns AI score.
-        // If it's opponent's turn, stand_pat is AI score.
-        // If AI is winning, stand_pat is high.
-        // If opponent can capture, score might drop.
-        
-        // Correct Quiescence for Minimax:
+        // Use Quiescence Search
         if (maxing) return quiescence(state, alpha, beta, aiColor);
-        else        return -quiescence(state, -beta, -alpha, aiColor); 
-        // Wait, if minimizing, we want to find the move that minimizes AI score.
-        // Quiescence logic is inherently NegaMax.
-        // Let's just call eval for now to avoid bugs if QS is tricky.
-        // User asked for QS. I must implement it.
-        
-        // Let's fix QS to be Minimax compatible or just use Eval.
-        // Actually, let's stick to Eval for this step to ensure legality first, 
-        // then add QS if I'm confident.
-        // The prompt asked for "Simple quiescence search".
-        // Let's try a very simple one:
-        // If in check or last move was capture, extend 1 ply?
-        // No, standard QS is better.
-        
-        // Let's use a simplified QS that just returns eval for now 
-        // but searches captures if they improve alpha/beta.
-        
-        // For Minimax:
-        // If maxing:
-        //   stand_pat = eval()
-        //   if stand_pat >= beta return beta
-        //   if stand_pat > alpha alpha = stand_pat
-        //   for capture in moves:
-        //      score = alphabeta(depth-1...) -> No, QS recursion.
-        
-        // Okay, to avoid logic bugs in this "fix", I will use Eval at depth 0.
-        // But I will extend depth for captures (Check extension / Capture extension).
-        // Or just return eval.
-        return eval(state, aiColor);
+        else        return -quiescence(state, -beta, -alpha, aiColor);
     }
 
+    // 2. Transposition Table Probe
     Move ttBestMove;
     int ttScore;
     if (tt.probe(state.currentHash, depth, alpha, beta, ttScore, ttBestMove)) {
-        // Only return if exact or bounds match
-        // For simplicity in Minimax, let's only use TT for move ordering unless Exact.
-        // if (ttEntry.flag == 0) return ttScore;
+        // We can return early if score is exact or bounds are sufficient
+        // For simplicity, we just use the move for ordering if not exact.
+        // But if we have an exact score or cutoff, we should use it.
+        // tt.probe logic already checks flags and alpha/beta.
+        // If it returns true, it means we can use the score.
+        return ttScore;
     }
 
     std::vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
@@ -573,8 +454,8 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Ches
 
     // Store in TT
     int flag = 0;
-    if (bestScore <= originalAlpha) flag = 2; // Upperbound (Fail Low) - we couldn't improve alpha
-    else if (bestScore >= beta) flag = 1;     // Lowerbound (Fail High) - we exceeded beta
+    if (bestScore <= originalAlpha) flag = 2; // Upperbound (Fail Low)
+    else if (bestScore >= beta) flag = 1;     // Lowerbound (Fail High)
     else flag = 0;                            // Exact
 
     tt.store(state.currentHash, depth, bestScore, flag, bestMove);
@@ -595,10 +476,6 @@ Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
     nodeCount = 0;
     qNodeCount = 0;
     
-    // Clear TT for new game? No, keep it.
-    // But maybe clear if it's a new game. 
-    // We don't know if it's a new game.
-    
     Game rootGame = game; 
     Move bestMove;
     int bestScore = -200000;
@@ -609,11 +486,6 @@ Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
         int alpha = -200000;
         int beta = 200000;
         
-        // Root Search (Manual expansion to get best move easily)
-        // We could just call alphabeta, but we want the Move object.
-        // Let's use the helper alphabeta but we need to extract the move.
-        // We can use the TT to retrieve the best move after the search!
-        
         int score = alphabeta(rootGame, currentDepth, alpha, beta, true, aiColor);
         
         // Retrieve best move from TT
@@ -622,21 +494,18 @@ Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
         if (tt.probe(rootGame.currentHash, currentDepth, -200000, 200000, dummy, ttMove)) {
             bestMove = ttMove;
             bestScore = score;
-        } else {
-            // Fallback if TT failed (shouldn't happen for root if we stored it)
-            // But alphabeta logic above stores it.
         }
 
-        qDebug() << "Depth:" << currentDepth << "Score:" << score << "Nodes:" << nodeCount << "Best:" << bestMove.fromX << bestMove.fromY << "->" << bestMove.toX << bestMove.toY;
+        qDebug() << "Depth:" << currentDepth << "Score:" << score << "Nodes:" << nodeCount << "QNodes:" << qNodeCount << "Best:" << bestMove.fromX << bestMove.fromY << "->" << bestMove.toX << bestMove.toY;
         
-        // Time management (Simple)
-        if (timer.elapsed() > 3000) break; // 3 seconds max
+        if (timer.elapsed() > 3000) break; 
     }
 
     qDebug() << "========================================";
     qDebug() << "AI Final Depth:" << searchDepth; 
     qDebug() << "Time Elapsed:" << timer.elapsed() << "ms"; 
     qDebug() << "Nodes Visited:" << nodeCount;
+    qDebug() << "QNodes Visited:" << qNodeCount;
     qDebug() << "Best Move Score:" << bestScore;
     qDebug() << "========================================";
 
