@@ -15,7 +15,8 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     piece.cpp \
-    ZobristHasher.cpp
+    ZobristHasher.cpp \
+    aiworker.cpp
 
 HEADERS += \
     ai.h \
@@ -24,7 +25,9 @@ HEADERS += \
     mainwindow.h \
     move.h \
     piece.h \
-    ZobristHasher.h
+    ZobristHasher.h \
+    aiworker.h \
+    types.h
 
 FORMS += \
     mainwindow.ui

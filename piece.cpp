@@ -231,7 +231,7 @@ void King::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
     // 퀸사이드 캐슬링
     if (game.canCastle(p_color, false))
     {
-        if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr)
+        if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr && game.getPiece(x - 3, y) == nullptr)
         {
             if (!game.isSquareAttacked(x, y, enemyColor) &&
                 !game.isSquareAttacked(x - 1, y, enemyColor) &&

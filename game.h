@@ -2,10 +2,12 @@
 #define GAME_H
 
 #include <vector>
-#include "piece.h"
+#include <memory>
+#include "types.h"
 #include "move.h"
-#include "ZobristHasher.h" // 추가
-#include <vector> // 추가
+#include "ZobristHasher.h"
+
+class Piece; // Forward declaration
 
 // 이동 실행 취소에 필요한 정보를 담는 구조체
 struct UndoInfo
@@ -48,7 +50,7 @@ public:
     std::vector<Move> generateMoves(int x, int y);
     std::vector<Move> generateMoves(Piece::PieceColor color);
 
-    void setPiece(int x, int y, Piece* piece);
+    void setPiece(int x, int y, std::unique_ptr<Piece> piece);
 
     // Public utility functions
     void switchTurn();
@@ -60,7 +62,7 @@ public:
 private:
     bool isInsufficientMaterial() const;
 
-    Piece* m_board[8][8];
+    std::unique_ptr<Piece> m_board[8][8];
     Piece::PieceColor p_currentTurn;
 
     // 킹 위치 캐시 (검색 성능 O(1) 보장용)

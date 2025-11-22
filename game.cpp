@@ -3,22 +3,14 @@
 #include "ZobristHasher.h"
 #include <vector>
 #include <algorithm>
+#include <memory>
 
 Game::Game() : p_currentTurn(Piece::WHITE)
 {
-    for(int x = 0; x < 8; ++x)
-        for(int y = 0; y < 8; ++y)
-            m_board[x][y] = nullptr;
-
     resetBoard();
 }
 
-Game::~Game()
-{
-    for(int x = 0; x < 8; ++x)
-        for(int y = 0; y < 8; ++y)
-            if(m_board[x][y]) delete m_board[x][y];
-}
+Game::~Game() = default;
 
 Game::Game(const Game& other) : p_currentTurn(other.p_currentTurn)
 {
@@ -45,7 +37,7 @@ Game::Game(const Game& other) : p_currentTurn(other.p_currentTurn)
         for(int y = 0; y < 8; ++y)
         {
             if(other.m_board[x][y])
-                m_board[x][y] = other.m_board[x][y]->clone();
+                m_board[x][y] = std::unique_ptr<Piece>(other.m_board[x][y]->clone());
             else
                 m_board[x][y] = nullptr;
         }
@@ -56,21 +48,21 @@ void Game::resetBoard()
 {
     for(int x=0; x<8; ++x)
         for(int y=0; y<8; ++y)
-            if(m_board[x][y]) { delete m_board[x][y]; m_board[x][y] = nullptr; }
+            m_board[x][y].reset();
 
     // 흑(Black) 배치
-    m_board[0][0] = new Rook(Piece::BLACK);   m_board[7][0] = new Rook(Piece::BLACK);
-    m_board[1][0] = new Knight(Piece::BLACK); m_board[6][0] = new Knight(Piece::BLACK);
-    m_board[2][0] = new Bishop(Piece::BLACK); m_board[5][0] = new Bishop(Piece::BLACK);
-    m_board[3][0] = new Queen(Piece::BLACK);  m_board[4][0] = new King(Piece::BLACK);
-    for(int x=0; x<8; ++x) m_board[x][1] = new Pawn(Piece::BLACK);
+    m_board[0][0] = std::make_unique<Rook>(Piece::BLACK);   m_board[7][0] = std::make_unique<Rook>(Piece::BLACK);
+    m_board[1][0] = std::make_unique<Knight>(Piece::BLACK); m_board[6][0] = std::make_unique<Knight>(Piece::BLACK);
+    m_board[2][0] = std::make_unique<Bishop>(Piece::BLACK); m_board[5][0] = std::make_unique<Bishop>(Piece::BLACK);
+    m_board[3][0] = std::make_unique<Queen>(Piece::BLACK);  m_board[4][0] = std::make_unique<King>(Piece::BLACK);
+    for(int x=0; x<8; ++x) m_board[x][1] = std::make_unique<Pawn>(Piece::BLACK);
 
     // 백(White) 배치
-    m_board[0][7] = new Rook(Piece::WHITE);   m_board[7][7] = new Rook(Piece::WHITE);
-    m_board[1][7] = new Knight(Piece::WHITE); m_board[6][7] = new Knight(Piece::WHITE);
-    m_board[2][7] = new Bishop(Piece::WHITE); m_board[5][7] = new Bishop(Piece::WHITE);
-    m_board[3][7] = new Queen(Piece::WHITE);  m_board[4][7] = new King(Piece::WHITE);
-    for(int x=0; x<8; ++x) m_board[x][6] = new Pawn(Piece::WHITE);
+    m_board[0][7] = std::make_unique<Rook>(Piece::WHITE);   m_board[7][7] = std::make_unique<Rook>(Piece::WHITE);
+    m_board[1][7] = std::make_unique<Knight>(Piece::WHITE); m_board[6][7] = std::make_unique<Knight>(Piece::WHITE);
+    m_board[2][7] = std::make_unique<Bishop>(Piece::WHITE); m_board[5][7] = std::make_unique<Bishop>(Piece::WHITE);
+    m_board[3][7] = std::make_unique<Queen>(Piece::WHITE);  m_board[4][7] = std::make_unique<King>(Piece::WHITE);
+    for(int x=0; x<8; ++x) m_board[x][6] = std::make_unique<Pawn>(Piece::WHITE);
 
     // [최적화] 킹 위치 초기화
     m_bKingX = 4; m_bKingY = 0;
@@ -99,13 +91,13 @@ void Game::resetBoard()
 Piece* Game::getPiece(int x, int y) const
 {
     if(x < 0 || x >= 8 || y < 0 || y >= 8) return nullptr;
-    return m_board[x][y];
+    return m_board[x][y].get();
 }
 
-void Game::setPiece(int x, int y, Piece* piece)
+void Game::setPiece(int x, int y, std::unique_ptr<Piece> piece)
 {
     if(x < 0 || x >= 8 || y < 0 || y >= 8) return;
-    m_board[x][y] = piece;
+    m_board[x][y] = std::move(piece);
 }
 
 void Game::switchTurn()
@@ -127,8 +119,8 @@ UndoInfo Game::makeMove(const Move& move)
     const auto& hasher = ZobristHasher::getInstance();
     uint64_t newHash = currentHash;
 
-    Piece* pieceToMove = m_board[move.fromX][move.fromY];
-    Piece::PieceColor movingColor = pieceToMove->getColor();
+    Piece* pieceToMoveRaw = m_board[move.fromX][move.fromY].get();
+    Piece::PieceColor movingColor = pieceToMoveRaw->getColor();
 
     // 1. 턴 변경 해시
     newHash ^= hasher.getBlackTurnKey();
@@ -140,35 +132,33 @@ UndoInfo Game::makeMove(const Move& move)
 
     // 3. 50수 카운터 및 캡처 처리
     fiftyMoveCounter++;
-    Piece* capturedPiece = nullptr;
-    undo.capturedPieceType = Piece::EMPTY; // 기본값
+    std::unique_ptr<Piece> capturedPiece = nullptr;
+    undo.capturedPieceType = Piece::EMPTY;
 
     if (move.moveType == Move::EN_PASSANT) {
         int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
-        capturedPiece = m_board[move.toX][capturedPawnY];
-        undo.capturedPieceType = capturedPiece->getType();
-        undo.capturedPieceColor = capturedPiece->getColor();
-        newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, capturedPawnY);
-        m_board[move.toX][capturedPawnY] = nullptr;
-        delete capturedPiece; // 메모리 누수 방지
+        capturedPiece = std::move(m_board[move.toX][capturedPawnY]);
+        if (capturedPiece) {
+            undo.capturedPieceType = capturedPiece->getType();
+            undo.capturedPieceColor = capturedPiece->getColor();
+            newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, capturedPawnY);
+        }
         fiftyMoveCounter = 0;
     } else {
-        capturedPiece = m_board[move.toX][move.toY];
-        if (capturedPiece != nullptr) {
+        capturedPiece = std::move(m_board[move.toX][move.toY]);
+        if (capturedPiece) {
             undo.capturedPieceType = capturedPiece->getType();
             undo.capturedPieceColor = capturedPiece->getColor();
             newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, move.toY);
-            delete capturedPiece; // 메모리 누수 방지
             fiftyMoveCounter = 0;
         }
     }
-    if (pieceToMove->getType() == Piece::PAWN) {
+    if (pieceToMoveRaw->getType() == Piece::PAWN) {
         fiftyMoveCounter = 0;
     }
-    // undo.capturedPiece = capturedPiece; // 이제 사용 안 함
 
     // 4. 기물 이동 (출발지에서 제거)
-    m_board[move.fromX][move.fromY] = nullptr;
+    auto pieceToMove = std::move(m_board[move.fromX][move.fromY]);
     newHash ^= hasher.getPieceKey(pieceToMove->getType(), movingColor, move.fromX, move.fromY);
 
     // 5. 킹 위치 및 캐슬링 권한 업데이트
@@ -192,35 +182,32 @@ UndoInfo Game::makeMove(const Move& move)
 
     // 6. 캐슬링 시 룩 이동
     if (move.moveType == Move::CASTLE_KS) {
-        Piece* rook = m_board[7][move.fromY];
-        m_board[5][move.fromY] = rook;
-        m_board[7][move.fromY] = nullptr;
+        auto rook = std::move(m_board[7][move.fromY]);
         newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 7, move.fromY);
         newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 5, move.fromY);
+        m_board[5][move.fromY] = std::move(rook);
     } else if (move.moveType == Move::CASTLE_QS) {
-        Piece* rook = m_board[0][move.fromY];
-        m_board[3][move.fromY] = rook;
-        m_board[0][move.fromY] = nullptr;
+        auto rook = std::move(m_board[0][move.fromY]);
         newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 0, move.fromY);
         newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 3, move.fromY);
+        m_board[3][move.fromY] = std::move(rook);
     }
 
     // 7. 프로모션 처리
     if (move.promotionType != 0) { // Piece::EMPTY 대신 0 사용
-        delete pieceToMove; // 폰 삭제
         switch((Piece::PieceType)move.promotionType) {
-            case Piece::QUEEN: pieceToMove = new Queen(movingColor); break;
-            case Piece::ROOK: pieceToMove = new Rook(movingColor); break;
-            case Piece::BISHOP: pieceToMove = new Bishop(movingColor); break;
-            case Piece::KNIGHT: pieceToMove = new Knight(movingColor); break;
+            case Piece::QUEEN: pieceToMove = std::make_unique<Queen>(movingColor); break;
+            case Piece::ROOK: pieceToMove = std::make_unique<Rook>(movingColor); break;
+            case Piece::BISHOP: pieceToMove = std::make_unique<Bishop>(movingColor); break;
+            case Piece::KNIGHT: pieceToMove = std::make_unique<Knight>(movingColor); break;
             default: break; // Should not happen
         }
     }
-    m_board[move.toX][move.toY] = pieceToMove;
     newHash ^= hasher.getPieceKey(pieceToMove->getType(), movingColor, move.toX, move.toY);
+    m_board[move.toX][move.toY] = std::move(pieceToMove);
 
     // 8. 새로운 앙파상 타겟 설정
-    if (pieceToMove->getType() == Piece::PAWN && abs(move.fromY - move.toY) == 2) {
+    if (m_board[move.toX][move.toY]->getType() == Piece::PAWN && abs(move.fromY - move.toY) == 2) {
         enPassantTargetSquare = move.fromX + (move.fromY + move.toY) / 2 * 8;
         newHash ^= hasher.getEnPassantKey(enPassantTargetSquare % 8);
     } else {
@@ -246,56 +233,50 @@ void Game::unmakeMove(const Move& move, const UndoInfo& undo)
 
     switchTurn();
 
-    Piece* movedPiece = m_board[move.toX][move.toY];
+    auto movedPiece = std::move(m_board[move.toX][move.toY]);
     Piece::PieceColor movingColor = movedPiece->getColor();
 
     if (move.promotionType != 0) { // Piece::EMPTY 대신 0 사용
-        delete movedPiece;
-        movedPiece = new Pawn(movingColor);
+        movedPiece = std::make_unique<Pawn>(movingColor);
     }
-
-    m_board[move.fromX][move.fromY] = movedPiece;
 
     if (movedPiece->getType() == Piece::KING) {
         if (movingColor == Piece::WHITE) { m_wKingX = move.fromX; m_wKingY = move.fromY; }
         else { m_bKingX = move.fromX; m_bKingY = move.fromY; }
     }
 
+    m_board[move.fromX][move.fromY] = std::move(movedPiece);
+
     if (move.moveType == Move::EN_PASSANT) {
-        m_board[move.toX][move.toY] = nullptr;
+        m_board[move.toX][move.toY].reset();
         int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
         
         // 캡처된 폰 재생성
-        Piece* capturedPawn = new Pawn(undo.capturedPieceColor);
-        m_board[move.toX][capturedPawnY] = capturedPawn;
+        m_board[move.toX][capturedPawnY] = std::make_unique<Pawn>(undo.capturedPieceColor);
 
     } else {
         // 캡처된 기물 재생성
         if (undo.capturedPieceType != Piece::EMPTY) {
-            Piece* capturedPiece = nullptr;
             switch(undo.capturedPieceType) {
-                case Piece::PAWN:   capturedPiece = new Pawn(undo.capturedPieceColor); break;
-                case Piece::KNIGHT: capturedPiece = new Knight(undo.capturedPieceColor); break;
-                case Piece::BISHOP: capturedPiece = new Bishop(undo.capturedPieceColor); break;
-                case Piece::ROOK:   capturedPiece = new Rook(undo.capturedPieceColor); break;
-                case Piece::QUEEN:  capturedPiece = new Queen(undo.capturedPieceColor); break;
-                case Piece::KING:   capturedPiece = new King(undo.capturedPieceColor); break; // Should not happen
-                default: break;
+                case Piece::PAWN:   m_board[move.toX][move.toY] = std::make_unique<Pawn>(undo.capturedPieceColor); break;
+                case Piece::KNIGHT: m_board[move.toX][move.toY] = std::make_unique<Knight>(undo.capturedPieceColor); break;
+                case Piece::BISHOP: m_board[move.toX][move.toY] = std::make_unique<Bishop>(undo.capturedPieceColor); break;
+                case Piece::ROOK:   m_board[move.toX][move.toY] = std::make_unique<Rook>(undo.capturedPieceColor); break;
+                case Piece::QUEEN:  m_board[move.toX][move.toY] = std::make_unique<Queen>(undo.capturedPieceColor); break;
+                case Piece::KING:   m_board[move.toX][move.toY] = std::make_unique<King>(undo.capturedPieceColor); break; // Should not happen
+                default: m_board[move.toX][move.toY].reset(); break;
             }
-            m_board[move.toX][move.toY] = capturedPiece;
         } else {
-            m_board[move.toX][move.toY] = nullptr;
+            m_board[move.toX][move.toY].reset();
         }
     }
 
     if (move.moveType == Move::CASTLE_KS) {
-        Piece* rook = m_board[5][move.fromY];
-        m_board[7][move.fromY] = rook;
-        m_board[5][move.fromY] = nullptr;
+        auto rook = std::move(m_board[5][move.fromY]);
+        m_board[7][move.fromY] = std::move(rook);
     } else if (move.moveType == Move::CASTLE_QS) {
-        Piece* rook = m_board[3][move.fromY];
-        m_board[0][move.fromY] = rook;
-        m_board[3][move.fromY] = nullptr;
+        auto rook = std::move(m_board[3][move.fromY]);
+        m_board[0][move.fromY] = std::move(rook);
     }
 }
 
@@ -325,7 +306,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
         int nx = kx + knDx[i];
         int ny = ky + knDy[i];
         if(nx>=0 && nx<8 && ny>=0 && ny<8) {
-            Piece* p = m_board[nx][ny];
+            Piece* p = m_board[nx][ny].get();
             if(p && p->getColor() == enemyColor && p->getType() == Piece::KNIGHT) return true;
         }
     }
@@ -338,11 +319,11 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
     int py = ky + pawnDir; 
     if(py >= 0 && py < 8) {
         if(kx > 0) {
-            Piece* p = m_board[kx-1][py];
+            Piece* p = m_board[kx-1][py].get();
             if(p && p->getColor() == enemyColor && p->getType() == Piece::PAWN) return true;
         }
         if(kx < 7) {
-            Piece* p = m_board[kx+1][py];
+            Piece* p = m_board[kx+1][py].get();
             if(p && p->getColor() == enemyColor && p->getType() == Piece::PAWN) return true;
         }
     }
@@ -355,7 +336,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
         while(true) {
             cx += rDx[i]; cy += rDy[i];
             if(cx<0||cx>=8||cy<0||cy>=8) break;
-            Piece* p = m_board[cx][cy];
+            Piece* p = m_board[cx][cy].get();
             if(p) {
                 if(p->getColor() == enemyColor && (p->getType() == Piece::ROOK || p->getType() == Piece::QUEEN)) return true;
                 break; 
@@ -371,7 +352,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
         while(true) {
             cx += bDx[i]; cy += bDy[i];
             if(cx<0||cx>=8||cy<0||cy>=8) break;
-            Piece* p = m_board[cx][cy];
+            Piece* p = m_board[cx][cy].get();
             if(p) {
                 if(p->getColor() == enemyColor && (p->getType() == Piece::BISHOP || p->getType() == Piece::QUEEN)) return true;
                 break;
@@ -385,7 +366,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
             if(dx==0 && dy==0) continue;
             int nx = kx+dx, ny = ky+dy;
             if(nx>=0 && nx<8 && ny>=0 && ny<8) {
-                Piece* p = m_board[nx][ny];
+                Piece* p = m_board[nx][ny].get();
                 if(p && p->getColor() == enemyColor && p->getType() == Piece::KING) return true;
             }
         }
@@ -403,7 +384,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
         int nx = x + knDx[i];
         int ny = y + knDy[i];
         if(nx>=0 && nx<8 && ny>=0 && ny<8) {
-            Piece* p = m_board[nx][ny];
+            Piece* p = m_board[nx][ny].get();
             if(p && p->getColor() == attackerColor && p->getType() == Piece::KNIGHT) return true;
         }
     }
@@ -413,11 +394,11 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
     int py = y + pawnDir;
     if(py >= 0 && py < 8) {
         if(x > 0) {
-            Piece* p = m_board[x-1][py];
+            Piece* p = m_board[x-1][py].get();
             if(p && p->getColor() == attackerColor && p->getType() == Piece::PAWN) return true;
         }
         if(x < 7) {
-            Piece* p = m_board[x+1][py];
+            Piece* p = m_board[x+1][py].get();
             if(p && p->getColor() == attackerColor && p->getType() == Piece::PAWN) return true;
         }
     }
@@ -430,7 +411,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
         while(true) {
             cx += rDx[i]; cy += rDy[i];
             if(cx<0||cx>=8||cy<0||cy>=8) break;
-            Piece* p = m_board[cx][cy];
+            Piece* p = m_board[cx][cy].get();
             if(p) {
                 if(p->getColor() == attackerColor && (p->getType() == Piece::ROOK || p->getType() == Piece::QUEEN)) return true;
                 break;
@@ -446,7 +427,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
         while(true) {
             cx += bDx[i]; cy += bDy[i];
             if(cx<0||cx>=8||cy<0||cy>=8) break;
-            Piece* p = m_board[cx][cy];
+            Piece* p = m_board[cx][cy].get();
             if(p) {
                 if(p->getColor() == attackerColor && (p->getType() == Piece::BISHOP || p->getType() == Piece::QUEEN)) return true;
                 break;
@@ -460,7 +441,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
             if(dx==0 && dy==0) continue;
             int nx = x+dx, ny = y+dy;
             if(nx>=0 && nx<8 && ny>=0 && ny<8) {
-                Piece* p = m_board[nx][ny];
+                Piece* p = m_board[nx][ny].get();
                 if(p && p->getColor() == attackerColor && p->getType() == Piece::KING) return true;
             }
         }
@@ -479,7 +460,7 @@ bool Game::isInsufficientMaterial() const
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
-            Piece* p = m_board[x][y];
+            Piece* p = m_board[x][y].get();
             if (p == nullptr || p->getType() == Piece::KING) continue;
 
             // 퀸, 룩, 폰이 하나라도 있으면 기물 부족 아님
@@ -512,7 +493,7 @@ bool Game::isInsufficientMaterial() const
         int b1_color = -1, b2_color = -1;
         for (int y = 0; y < 8; ++y) {
             for (int x = 0; x < 8; ++x) {
-                Piece* p = m_board[x][y];
+                Piece* p = m_board[x][y].get();
                 if (p != nullptr && p->getType() == Piece::BISHOP) {
                     if (b1_color == -1) b1_color = (x + y) % 2;
                     else b2_color = (x + y) % 2;
@@ -554,9 +535,9 @@ std::vector<Move> Game::generateMoves(int x, int y)
     return legalMoves;
 }
 
-vector<Move> Game::generateMoves(Piece::PieceColor color)
+std::vector<Move> Game::generateMoves(Piece::PieceColor color)
 {
-    vector<Move> possibleMoves;
+    std::vector<Move> possibleMoves;
     possibleMoves.reserve(64); // 메모리 재할당 최소화
 
     // 1. 모든 기물의 기본 이동 수집 (Pseudo-legal)
@@ -564,7 +545,7 @@ vector<Move> Game::generateMoves(Piece::PieceColor color)
     {
         for(int y = 0; y < 8; ++y)
         {
-            Piece* p = m_board[x][y];
+            Piece* p = m_board[x][y].get();
             if(p && p->getColor() == color)
             {
                 // [최적화] 벡터 참조 전달
@@ -573,7 +554,7 @@ vector<Move> Game::generateMoves(Piece::PieceColor color)
         }
     }
 
-    vector<Move> legalMoves;
+    std::vector<Move> legalMoves;
     legalMoves.reserve(possibleMoves.size());
 
     // 2. 체크 상태 검증 (isCheck 최적화로 인해 매우 빨라짐)
