@@ -33,7 +33,7 @@ private:
 class AI
 {
 public:
-    static const int searchDepth = 6; // Target depth
+    static const int searchDepth = 4; // Target depth
     static Move findBestMove(const Game& game, Chess::PieceColor aiColor);
 
     static int nodeCount;
