@@ -1,4 +1,6 @@
 #include "ZobristHasher.h"
+#include "game.h"
+#include "piece.h"
 #include <random>
 #include <chrono>
 
@@ -34,11 +36,11 @@ void ZobristHasher::initialize() {
     }
 }
 
-uint64_t ZobristHasher::getPieceKey(Piece::PieceType type, Piece::PieceColor color, int x, int y) const {
+uint64_t ZobristHasher::getPieceKey(Chess::PieceType type, Chess::PieceColor color, int x, int y) const {
     // PieceType enum starts from EMPTY=0, PAWN=1, etc.
     // We can map this to an index from 0 to 11 for the 12 piece types (6 types * 2 colors)
     // Index = (type - 1) * 2 + (color - 1)
-    if (type == Piece::EMPTY || color == Piece::NONE) return 0;
+    if (type == Chess::EMPTY || color == Chess::NONE) return 0;
     return pieceKeys[(type - 1) * 2 + (color - 1)][y][x];
 }
 
@@ -46,8 +48,8 @@ uint64_t ZobristHasher::getBlackTurnKey() const {
     return blackTurnKey;
 }
 
-uint64_t ZobristHasher::getCastleKey(Piece::PieceColor color, bool isKingSide) const {
-    if (color == Piece::WHITE) {
+uint64_t ZobristHasher::getCastleKey(Chess::PieceColor color, bool isKingSide) const {
+    if (color == Chess::WHITE) {
         return isKingSide ? castlingKeys[0] : castlingKeys[1];
     } else {
         return isKingSide ? castlingKeys[2] : castlingKeys[3];
@@ -72,14 +74,14 @@ uint64_t ZobristHasher::calculateHash(const Game& game) const {
         }
     }
 
-    if (game.getCurrentTurn() == Piece::BLACK) {
+    if (game.getCurrentTurn() == Chess::BLACK) {
         hash ^= getBlackTurnKey();
     }
 
-    if (game.canCastle(Piece::WHITE, true)) hash ^= getCastleKey(Piece::WHITE, true);
-    if (game.canCastle(Piece::WHITE, false)) hash ^= getCastleKey(Piece::WHITE, false);
-    if (game.canCastle(Piece::BLACK, true)) hash ^= getCastleKey(Piece::BLACK, true);
-    if (game.canCastle(Piece::BLACK, false)) hash ^= getCastleKey(Piece::BLACK, false);
+    if (game.canCastle(Chess::WHITE, true)) hash ^= getCastleKey(Chess::WHITE, true);
+    if (game.canCastle(Chess::WHITE, false)) hash ^= getCastleKey(Chess::WHITE, false);
+    if (game.canCastle(Chess::BLACK, true)) hash ^= getCastleKey(Chess::BLACK, true);
+    if (game.canCastle(Chess::BLACK, false)) hash ^= getCastleKey(Chess::BLACK, false);
 
     int epSquare = game.getEnPassantTargetSquare();
     if (epSquare != -1) {

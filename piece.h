@@ -3,9 +3,6 @@
 
 #include <vector>
 #include "move.h"
-
-
-
 #include "types.h"
 
 class Game;
@@ -14,7 +11,7 @@ class Piece
 {
 public:
 
-    Piece(Piece::PieceColor color, Piece::PieceType type) : p_color(color), p_type(type) {}
+    Piece(Chess::PieceColor color, Chess::PieceType type) : p_color(color), p_type(type) {}
     virtual ~Piece() {}
 
     // [����] ���͸� ��ȯ���� �ʰ� ������ �޾� �߰��� (�޸� �Ҵ� ����)
@@ -22,19 +19,19 @@ public:
 
     virtual Piece* clone() const = 0;
 
-    Piece::PieceColor getColor() const { return p_color; }
-    Piece::PieceType getType() const { return p_type; }
+    Chess::PieceColor getColor() const { return p_color; }
+    Chess::PieceType getType() const { return p_type; }
     int getValue() const;
 
 protected:
-    Piece::PieceColor p_color;
-    Piece::PieceType p_type;
+    Chess::PieceColor p_color;
+    Chess::PieceType p_type;
 };
 
 class Pawn : public Piece
 {
 public:
-    Pawn(Piece::PieceColor color) : Piece(color, Piece::PAWN) {}
+    Pawn(Chess::PieceColor color) : Piece(color, Chess::PAWN) {}
     void addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const override;
     virtual Piece* clone() const override;
 };
@@ -42,7 +39,7 @@ public:
 class Knight : public Piece
 {
 public:
-    Knight(Piece::PieceColor color) : Piece(color, Piece::KNIGHT) {}
+    Knight(Chess::PieceColor color) : Piece(color, Chess::KNIGHT) {}
     void addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const override;
     virtual Piece* clone() const override;
 };
@@ -50,7 +47,7 @@ public:
 class Bishop : public Piece
 {
 public:
-    Bishop(Piece::PieceColor color) : Piece(color, Piece::BISHOP) {}
+    Bishop(Chess::PieceColor color) : Piece(color, Chess::BISHOP) {}
     void addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const override;
     virtual Piece* clone() const override;
 };
@@ -58,7 +55,7 @@ public:
 class Rook : public Piece
 {
 public:
-    Rook(Piece::PieceColor color) : Piece(color, Piece::ROOK) {}
+    Rook(Chess::PieceColor color) : Piece(color, Chess::ROOK) {}
     void addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const override;
     virtual Piece* clone() const override;
 };
@@ -66,7 +63,7 @@ public:
 class Queen : public Piece
 {
 public:
-    Queen(Piece::PieceColor color) : Piece(color, Piece::QUEEN) {}
+    Queen(Chess::PieceColor color) : Piece(color, Chess::QUEEN) {}
     void addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const override;
     virtual Piece* clone() const override;
 };
@@ -74,7 +71,7 @@ public:
 class King : public Piece
 {
 public:
-    King(Piece::PieceColor color) : Piece(color, Piece::KING) {}
+    King(Chess::PieceColor color) : Piece(color, Chess::KING) {}
     void addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const override;
     virtual Piece* clone() const override;
 };

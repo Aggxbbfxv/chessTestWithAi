@@ -13,7 +13,7 @@ public:
     explicit AiWorker(QObject *parent = nullptr);
 
 public slots:
-    void findBestMove(const Game& game, Piece::PieceColor aiColor);
+    void findBestMove(const Game& game, Chess::PieceColor aiColor);
 
 signals:
     void moveFound(Move move);

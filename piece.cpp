@@ -7,17 +7,17 @@ int Piece::getValue() const
 {
     switch(p_type)
     {
-    case Piece::PAWN: return 100;
-    case Piece::KNIGHT: return 300;
-    case Piece::BISHOP: return 310;
-    case Piece::ROOK: return 500;
-    case Piece::QUEEN: return 900;
-    case Piece::KING: return 20000;
+    case Chess::PAWN: return 100;
+    case Chess::KNIGHT: return 300;
+    case Chess::BISHOP: return 310;
+    case Chess::ROOK: return 500;
+    case Chess::QUEEN: return 900;
+    case Chess::KING: return 20000;
     default: return 0;
     }
 }
 
-static void addStraightMove(std::vector<Move>& moves, const Game& game, Piece::PieceColor color, int x, int y, int dx, int dy)
+static void addStraightMove(std::vector<Move>& moves, const Game& game, Chess::PieceColor color, int x, int y, int dx, int dy)
 {
     int newX = x + dx;
     int newY = y + dy;
@@ -48,24 +48,24 @@ Piece* Pawn::clone() const { return new Pawn(*this); }
 
 void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
-    int direction = (p_color == Piece::WHITE) ? -1 : 1;
-    int promotionRank = (p_color == Piece::WHITE) ? 0 : 7;
+    int direction = (p_color == Chess::WHITE) ? -1 : 1;
+    int promotionRank = (p_color == Chess::WHITE) ? 0 : 7;
 
     // 한 칸 전진
     int oneStepY = y + direction;
     if(oneStepY >= 0 && oneStepY < 8 && game.getPiece(x, oneStepY) == nullptr)
     {
         if (oneStepY == promotionRank) { // 프로모션
-            moves.emplace_back(x, y, x, oneStepY, Piece::QUEEN);
-            moves.emplace_back(x, y, x, oneStepY, Piece::ROOK);
-            moves.emplace_back(x, y, x, oneStepY, Piece::BISHOP);
-            moves.emplace_back(x, y, x, oneStepY, Piece::KNIGHT);
+            moves.emplace_back(x, y, x, oneStepY, Chess::QUEEN);
+            moves.emplace_back(x, y, x, oneStepY, Chess::ROOK);
+            moves.emplace_back(x, y, x, oneStepY, Chess::BISHOP);
+            moves.emplace_back(x, y, x, oneStepY, Chess::KNIGHT);
         } else {
             moves.emplace_back(x, y, x, oneStepY);
         }
 
         // 두 칸 전진 (첫 수일 때)
-        int startRow = (p_color == Piece::WHITE) ? 6 : 1;
+        int startRow = (p_color == Chess::WHITE) ? 6 : 1;
         if(y == startRow)
         {
             int twoStepY = y + 2 * direction;
@@ -87,10 +87,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
             if(leftTarget && leftTarget->getColor() != p_color)
             {
                 if (captureY == promotionRank) { // 프로모션
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::QUEEN);
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::ROOK);
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::BISHOP);
-                    moves.emplace_back(x, y, x - 1, captureY, Piece::KNIGHT);
+                    moves.emplace_back(x, y, x - 1, captureY, Chess::QUEEN);
+                    moves.emplace_back(x, y, x - 1, captureY, Chess::ROOK);
+                    moves.emplace_back(x, y, x - 1, captureY, Chess::BISHOP);
+                    moves.emplace_back(x, y, x - 1, captureY, Chess::KNIGHT);
                 } else {
                     moves.emplace_back(x, y, x - 1, captureY);
                 }
@@ -103,10 +103,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
             if(rightTarget && rightTarget->getColor() != p_color)
             {
                 if (captureY == promotionRank) { // 프로모션
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::QUEEN);
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::ROOK);
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::BISHOP);
-                    moves.emplace_back(x, y, x + 1, captureY, Piece::KNIGHT);
+                    moves.emplace_back(x, y, x + 1, captureY, Chess::QUEEN);
+                    moves.emplace_back(x, y, x + 1, captureY, Chess::ROOK);
+                    moves.emplace_back(x, y, x + 1, captureY, Chess::BISHOP);
+                    moves.emplace_back(x, y, x + 1, captureY, Chess::KNIGHT);
                 } else {
                     moves.emplace_back(x, y, x + 1, captureY);
                 }
@@ -120,7 +120,7 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
         int epX = epTarget % 8;
         int epY = epTarget / 8;
 
-        if (y == ((p_color == Piece::WHITE) ? 3 : 4)) {
+        if (y == ((p_color == Chess::WHITE) ? 3 : 4)) {
              if (epX == x + 1 && epY == y + direction) {
                 moves.emplace_back(x, y, x + 1, y + direction, Move::EN_PASSANT);
             } else if (epX == x - 1 && epY == y + direction) {
@@ -211,7 +211,7 @@ void King::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
     }
 
     // 캐슬링 로직 추가
-    Piece::PieceColor enemyColor = (p_color == Piece::WHITE) ? Piece::BLACK : Piece::WHITE;
+    Chess::PieceColor enemyColor = (p_color == Chess::WHITE) ? Chess::BLACK : Chess::WHITE;
     if (game.isCheck(p_color)) return;
 
     // 킹사이드 캐슬링

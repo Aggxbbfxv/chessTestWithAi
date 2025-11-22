@@ -1,4 +1,5 @@
 #include "ai.h"
+#include "piece.h"
 #include <vector>
 #include <algorithm>
 #include <QElapsedTimer>
@@ -104,7 +105,7 @@ int AI::scoreMove(const Game& game, const Move& move)
     return score;
 }
 
-int AI::eval(const Game& game, Piece::PieceColor colorToMax)
+int AI::eval(const Game& game, Chess::PieceColor colorToMax)
 {
     int totalScore = 0;
     int numMajorPieces = 0; // 퀸, 룩 카운트
@@ -113,25 +114,25 @@ int AI::eval(const Game& game, Piece::PieceColor colorToMax)
     {
         for(int y = 0; y < 8; ++y)
         {
-            Piece* p = game.m_board[x][y];
+            Piece* p = game.m_board[x][y].get();
 
             if(p != nullptr)
             {
-                if (p->getType() == Piece::QUEEN || p->getType() == Piece::ROOK) {
+                if (p->getType() == Chess::QUEEN || p->getType() == Chess::ROOK) {
                     numMajorPieces++;
                 }
 
                 int pieceScore = p->getValue();
-                int pstY = (p->getColor() == Piece::WHITE) ? (7 - y) : y;
+                int pstY = (p->getColor() == Chess::WHITE) ? (7 - y) : y;
 
                 switch (p->getType())
                 {
-                case Piece::PAWN: pieceScore += pawnPST[pstY][x]; break;
-                case Piece::BISHOP: pieceScore += bishopPST[pstY][x]; break;
-                case Piece::KNIGHT: pieceScore += knightPST[pstY][x]; break;
-                case Piece::ROOK: pieceScore += rookPST[pstY][x]; break;
-                case Piece::QUEEN: pieceScore += queenPST[pstY][x]; break;
-                case Piece::KING:
+                case Chess::PAWN: pieceScore += pawnPST[pstY][x]; break;
+                case Chess::BISHOP: pieceScore += bishopPST[pstY][x]; break;
+                case Chess::KNIGHT: pieceScore += knightPST[pstY][x]; break;
+                case Chess::ROOK: pieceScore += rookPST[pstY][x]; break;
+                case Chess::QUEEN: pieceScore += queenPST[pstY][x]; break;
+                case Chess::KING:
                     // 게임 단계에 따라 다른 PST 적용
                     if (numMajorPieces <= 3) { // 엔드게임으로 간주 (퀸 하나 또는 룩 두개 이하)
                         pieceScore += king_endgame_pst[pstY][x];
@@ -152,7 +153,7 @@ int AI::eval(const Game& game, Piece::PieceColor colorToMax)
     return totalScore;
 }
 
-int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Piece::PieceColor aiColor)
+int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Chess::PieceColor aiColor)
 {
     nodeCount++;
 
@@ -177,7 +178,7 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Piec
         return eval(state, aiColor);
     }
 
-    vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
+    std::vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
 
     // Move Ordering: MVV-LVA로 정렬
     std::sort(allMoves.begin(), allMoves.end(), [&](const Move& a, const Move& b) {
@@ -195,8 +196,8 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Piec
 
             state.unmakeMove(move, undo);
 
-            maxEval = max(maxEval, evalScore);
-            alpha = max(alpha, evalScore);
+            maxEval = std::max(maxEval, evalScore);
+            alpha = std::max(alpha, evalScore);
 
             if(beta <= alpha) break;
         }
@@ -213,8 +214,8 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Piec
 
             state.unmakeMove(move, undo);
 
-            minEval = min(minEval, evalScore);
-            beta = min(beta, evalScore);
+            minEval = std::min(minEval, evalScore);
+            beta = std::min(beta, evalScore);
 
             if(beta <= alpha) break;
         }
@@ -228,7 +229,7 @@ struct MoveScore {
     int score;
 };
 
-Move AI::findBestMove(const Game& game, Piece::PieceColor aiColor)
+Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
 {
     if(game.getCurrentTurn() != aiColor) return Move();
 
@@ -237,7 +238,7 @@ Move AI::findBestMove(const Game& game, Piece::PieceColor aiColor)
     nodeCount = 0;
 
     Game rootGame = game; 
-    vector<Move> rootMoves = rootGame.generateMoves(aiColor);
+    std::vector<Move> rootMoves = rootGame.generateMoves(aiColor);
     
     if(rootMoves.empty()) return Move();
     

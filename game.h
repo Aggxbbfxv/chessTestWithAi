@@ -12,8 +12,8 @@ class Piece; // Forward declaration
 // 이동 실행 취소에 필요한 정보를 담는 구조체
 struct UndoInfo
 {
-    Piece::PieceType capturedPieceType;
-    Piece::PieceColor capturedPieceColor;
+    Chess::PieceType capturedPieceType;
+    Chess::PieceColor capturedPieceColor;
     bool w_castle_ks;
     bool w_castle_qs;
     bool b_castle_ks;
@@ -42,28 +42,28 @@ public:
     void unmakeMove(const Move& move, const UndoInfo& undo);
     Game makeMoveCopy(const Move& move) const;
 
-    Piece::PieceColor getCurrentTurn() const { return p_currentTurn; }
-    bool isGameOver() const;
+    Chess::PieceColor getCurrentTurn() const { return p_currentTurn; }
+    bool isGameOver();
     GameState getGameState();
 
     // [최적화] 특정 위치의 기물에 대한 이동만 생성
     std::vector<Move> generateMoves(int x, int y);
-    std::vector<Move> generateMoves(Piece::PieceColor color);
+    std::vector<Move> generateMoves(Chess::PieceColor color);
 
     void setPiece(int x, int y, std::unique_ptr<Piece> piece);
 
     // Public utility functions
     void switchTurn();
-    bool isCheck(Piece::PieceColor kingColor) const;
-    bool isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const;
-    bool canCastle(Piece::PieceColor color, bool isKingSide) const;
+    bool isCheck(Chess::PieceColor kingColor) const;
+    bool isSquareAttacked(int x, int y, Chess::PieceColor attackerColor) const;
+    bool canCastle(Chess::PieceColor color, bool isKingSide) const;
     int getEnPassantTargetSquare() const { return enPassantTargetSquare; }
 
 private:
     bool isInsufficientMaterial() const;
 
     std::unique_ptr<Piece> m_board[8][8];
-    Piece::PieceColor p_currentTurn;
+    Chess::PieceColor p_currentTurn;
 
     // 킹 위치 캐시 (검색 성능 O(1) 보장용)
     int m_wKingX, m_wKingY;

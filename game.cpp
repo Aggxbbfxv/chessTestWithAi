@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <memory>
 
-Game::Game() : p_currentTurn(Piece::WHITE)
+Game::Game() : p_currentTurn(Chess::WHITE)
 {
     resetBoard();
 }
@@ -51,18 +51,18 @@ void Game::resetBoard()
             m_board[x][y].reset();
 
     // 흑(Black) 배치
-    m_board[0][0] = std::make_unique<Rook>(Piece::BLACK);   m_board[7][0] = std::make_unique<Rook>(Piece::BLACK);
-    m_board[1][0] = std::make_unique<Knight>(Piece::BLACK); m_board[6][0] = std::make_unique<Knight>(Piece::BLACK);
-    m_board[2][0] = std::make_unique<Bishop>(Piece::BLACK); m_board[5][0] = std::make_unique<Bishop>(Piece::BLACK);
-    m_board[3][0] = std::make_unique<Queen>(Piece::BLACK);  m_board[4][0] = std::make_unique<King>(Piece::BLACK);
-    for(int x=0; x<8; ++x) m_board[x][1] = std::make_unique<Pawn>(Piece::BLACK);
+    m_board[0][0] = std::make_unique<Rook>(Chess::BLACK);   m_board[7][0] = std::make_unique<Rook>(Chess::BLACK);
+    m_board[1][0] = std::make_unique<Knight>(Chess::BLACK); m_board[6][0] = std::make_unique<Knight>(Chess::BLACK);
+    m_board[2][0] = std::make_unique<Bishop>(Chess::BLACK); m_board[5][0] = std::make_unique<Bishop>(Chess::BLACK);
+    m_board[3][0] = std::make_unique<Queen>(Chess::BLACK);  m_board[4][0] = std::make_unique<King>(Chess::BLACK);
+    for(int x=0; x<8; ++x) m_board[x][1] = std::make_unique<Pawn>(Chess::BLACK);
 
     // 백(White) 배치
-    m_board[0][7] = std::make_unique<Rook>(Piece::WHITE);   m_board[7][7] = std::make_unique<Rook>(Piece::WHITE);
-    m_board[1][7] = std::make_unique<Knight>(Piece::WHITE); m_board[6][7] = std::make_unique<Knight>(Piece::WHITE);
-    m_board[2][7] = std::make_unique<Bishop>(Piece::WHITE); m_board[5][7] = std::make_unique<Bishop>(Piece::WHITE);
-    m_board[3][7] = std::make_unique<Queen>(Piece::WHITE);  m_board[4][7] = std::make_unique<King>(Piece::WHITE);
-    for(int x=0; x<8; ++x) m_board[x][6] = std::make_unique<Pawn>(Piece::WHITE);
+    m_board[0][7] = std::make_unique<Rook>(Chess::WHITE);   m_board[7][7] = std::make_unique<Rook>(Chess::WHITE);
+    m_board[1][7] = std::make_unique<Knight>(Chess::WHITE); m_board[6][7] = std::make_unique<Knight>(Chess::WHITE);
+    m_board[2][7] = std::make_unique<Bishop>(Chess::WHITE); m_board[5][7] = std::make_unique<Bishop>(Chess::WHITE);
+    m_board[3][7] = std::make_unique<Queen>(Chess::WHITE);  m_board[4][7] = std::make_unique<King>(Chess::WHITE);
+    for(int x=0; x<8; ++x) m_board[x][6] = std::make_unique<Pawn>(Chess::WHITE);
 
     // [최적화] 킹 위치 초기화
     m_bKingX = 4; m_bKingY = 0;
@@ -80,7 +80,7 @@ void Game::resetBoard()
     // 50수 카운터 초기화
     fiftyMoveCounter = 0;
 
-    p_currentTurn = Piece::WHITE;
+    p_currentTurn = Chess::WHITE;
 
     // 해시 초기화
     history.clear();
@@ -102,7 +102,7 @@ void Game::setPiece(int x, int y, std::unique_ptr<Piece> piece)
 
 void Game::switchTurn()
 {
-    p_currentTurn = (p_currentTurn == Piece::WHITE) ? Piece::BLACK : Piece::WHITE;
+    p_currentTurn = (p_currentTurn == Chess::WHITE) ? Chess::BLACK : Chess::WHITE;
 }
 
 UndoInfo Game::makeMove(const Move& move)
@@ -120,7 +120,7 @@ UndoInfo Game::makeMove(const Move& move)
     uint64_t newHash = currentHash;
 
     Piece* pieceToMoveRaw = m_board[move.fromX][move.fromY].get();
-    Piece::PieceColor movingColor = pieceToMoveRaw->getColor();
+    Chess::PieceColor movingColor = pieceToMoveRaw->getColor();
 
     // 1. 턴 변경 해시
     newHash ^= hasher.getBlackTurnKey();
@@ -133,10 +133,10 @@ UndoInfo Game::makeMove(const Move& move)
     // 3. 50수 카운터 및 캡처 처리
     fiftyMoveCounter++;
     std::unique_ptr<Piece> capturedPiece = nullptr;
-    undo.capturedPieceType = Piece::EMPTY;
+    undo.capturedPieceType = Chess::EMPTY;
 
     if (move.moveType == Move::EN_PASSANT) {
-        int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
+        int capturedPawnY = (movingColor == Chess::WHITE) ? move.toY + 1 : move.toY - 1;
         capturedPiece = std::move(m_board[move.toX][capturedPawnY]);
         if (capturedPiece) {
             undo.capturedPieceType = capturedPiece->getType();
@@ -153,7 +153,7 @@ UndoInfo Game::makeMove(const Move& move)
             fiftyMoveCounter = 0;
         }
     }
-    if (pieceToMoveRaw->getType() == Piece::PAWN) {
+    if (pieceToMoveRaw->getType() == Chess::PAWN) {
         fiftyMoveCounter = 0;
     }
 
@@ -162,44 +162,44 @@ UndoInfo Game::makeMove(const Move& move)
     newHash ^= hasher.getPieceKey(pieceToMove->getType(), movingColor, move.fromX, move.fromY);
 
     // 5. 킹 위치 및 캐슬링 권한 업데이트
-    if (pieceToMove->getType() == Piece::KING) {
-        if (movingColor == Piece::WHITE) {
-            if(w_castle_ks) newHash ^= hasher.getCastleKey(Piece::WHITE, true);
-            if(w_castle_qs) newHash ^= hasher.getCastleKey(Piece::WHITE, false);
+    if (pieceToMove->getType() == Chess::KING) {
+        if (movingColor == Chess::WHITE) {
+            if(w_castle_ks) newHash ^= hasher.getCastleKey(Chess::WHITE, true);
+            if(w_castle_qs) newHash ^= hasher.getCastleKey(Chess::WHITE, false);
             w_castle_ks = false; w_castle_qs = false;
             m_wKingX = move.toX; m_wKingY = move.toY;
         } else {
-            if(b_castle_ks) newHash ^= hasher.getCastleKey(Piece::BLACK, true);
-            if(b_castle_qs) newHash ^= hasher.getCastleKey(Piece::BLACK, false);
+            if(b_castle_ks) newHash ^= hasher.getCastleKey(Chess::BLACK, true);
+            if(b_castle_qs) newHash ^= hasher.getCastleKey(Chess::BLACK, false);
             b_castle_ks = false; b_castle_qs = false;
             m_bKingX = move.toX; m_bKingY = move.toY;
         }
     }
-    if (move.fromX == 0 && move.fromY == 7 && w_castle_qs) { newHash ^= hasher.getCastleKey(Piece::WHITE, false); w_castle_qs = false; }
-    if (move.fromX == 7 && move.fromY == 7 && w_castle_ks) { newHash ^= hasher.getCastleKey(Piece::WHITE, true); w_castle_ks = false; }
-    if (move.fromX == 0 && move.fromY == 0 && b_castle_qs) { newHash ^= hasher.getCastleKey(Piece::BLACK, false); b_castle_qs = false; }
-    if (move.fromX == 7 && move.fromY == 0 && b_castle_ks) { newHash ^= hasher.getCastleKey(Piece::BLACK, true); b_castle_ks = false; }
+    if (move.fromX == 0 && move.fromY == 7 && w_castle_qs) { newHash ^= hasher.getCastleKey(Chess::WHITE, false); w_castle_qs = false; }
+    if (move.fromX == 7 && move.fromY == 7 && w_castle_ks) { newHash ^= hasher.getCastleKey(Chess::WHITE, true); w_castle_ks = false; }
+    if (move.fromX == 0 && move.fromY == 0 && b_castle_qs) { newHash ^= hasher.getCastleKey(Chess::BLACK, false); b_castle_qs = false; }
+    if (move.fromX == 7 && move.fromY == 0 && b_castle_ks) { newHash ^= hasher.getCastleKey(Chess::BLACK, true); b_castle_ks = false; }
 
     // 6. 캐슬링 시 룩 이동
     if (move.moveType == Move::CASTLE_KS) {
         auto rook = std::move(m_board[7][move.fromY]);
-        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 7, move.fromY);
-        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 5, move.fromY);
+        newHash ^= hasher.getPieceKey(Chess::ROOK, movingColor, 7, move.fromY);
+        newHash ^= hasher.getPieceKey(Chess::ROOK, movingColor, 5, move.fromY);
         m_board[5][move.fromY] = std::move(rook);
     } else if (move.moveType == Move::CASTLE_QS) {
         auto rook = std::move(m_board[0][move.fromY]);
-        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 0, move.fromY);
-        newHash ^= hasher.getPieceKey(Piece::ROOK, movingColor, 3, move.fromY);
+        newHash ^= hasher.getPieceKey(Chess::ROOK, movingColor, 0, move.fromY);
+        newHash ^= hasher.getPieceKey(Chess::ROOK, movingColor, 3, move.fromY);
         m_board[3][move.fromY] = std::move(rook);
     }
 
     // 7. 프로모션 처리
-    if (move.promotionType != 0) { // Piece::EMPTY 대신 0 사용
-        switch((Piece::PieceType)move.promotionType) {
-            case Piece::QUEEN: pieceToMove = std::make_unique<Queen>(movingColor); break;
-            case Piece::ROOK: pieceToMove = std::make_unique<Rook>(movingColor); break;
-            case Piece::BISHOP: pieceToMove = std::make_unique<Bishop>(movingColor); break;
-            case Piece::KNIGHT: pieceToMove = std::make_unique<Knight>(movingColor); break;
+    if (move.promotionType != 0) { // Chess::EMPTY 대신 0 사용
+        switch((Chess::PieceType)move.promotionType) {
+            case Chess::QUEEN: pieceToMove = std::make_unique<Queen>(movingColor); break;
+            case Chess::ROOK: pieceToMove = std::make_unique<Rook>(movingColor); break;
+            case Chess::BISHOP: pieceToMove = std::make_unique<Bishop>(movingColor); break;
+            case Chess::KNIGHT: pieceToMove = std::make_unique<Knight>(movingColor); break;
             default: break; // Should not happen
         }
     }
@@ -207,7 +207,7 @@ UndoInfo Game::makeMove(const Move& move)
     m_board[move.toX][move.toY] = std::move(pieceToMove);
 
     // 8. 새로운 앙파상 타겟 설정
-    if (m_board[move.toX][move.toY]->getType() == Piece::PAWN && abs(move.fromY - move.toY) == 2) {
+    if (m_board[move.toX][move.toY]->getType() == Chess::PAWN && abs(move.fromY - move.toY) == 2) {
         enPassantTargetSquare = move.fromX + (move.fromY + move.toY) / 2 * 8;
         newHash ^= hasher.getEnPassantKey(enPassantTargetSquare % 8);
     } else {
@@ -234,14 +234,14 @@ void Game::unmakeMove(const Move& move, const UndoInfo& undo)
     switchTurn();
 
     auto movedPiece = std::move(m_board[move.toX][move.toY]);
-    Piece::PieceColor movingColor = movedPiece->getColor();
+    Chess::PieceColor movingColor = movedPiece->getColor();
 
-    if (move.promotionType != 0) { // Piece::EMPTY 대신 0 사용
+    if (move.promotionType != 0) { // Chess::EMPTY 대신 0 사용
         movedPiece = std::make_unique<Pawn>(movingColor);
     }
 
-    if (movedPiece->getType() == Piece::KING) {
-        if (movingColor == Piece::WHITE) { m_wKingX = move.fromX; m_wKingY = move.fromY; }
+    if (movedPiece->getType() == Chess::KING) {
+        if (movingColor == Chess::WHITE) { m_wKingX = move.fromX; m_wKingY = move.fromY; }
         else { m_bKingX = move.fromX; m_bKingY = move.fromY; }
     }
 
@@ -249,21 +249,21 @@ void Game::unmakeMove(const Move& move, const UndoInfo& undo)
 
     if (move.moveType == Move::EN_PASSANT) {
         m_board[move.toX][move.toY].reset();
-        int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
+        int capturedPawnY = (movingColor == Chess::WHITE) ? move.toY + 1 : move.toY - 1;
         
         // 캡처된 폰 재생성
         m_board[move.toX][capturedPawnY] = std::make_unique<Pawn>(undo.capturedPieceColor);
 
     } else {
         // 캡처된 기물 재생성
-        if (undo.capturedPieceType != Piece::EMPTY) {
+        if (undo.capturedPieceType != Chess::EMPTY) {
             switch(undo.capturedPieceType) {
-                case Piece::PAWN:   m_board[move.toX][move.toY] = std::make_unique<Pawn>(undo.capturedPieceColor); break;
-                case Piece::KNIGHT: m_board[move.toX][move.toY] = std::make_unique<Knight>(undo.capturedPieceColor); break;
-                case Piece::BISHOP: m_board[move.toX][move.toY] = std::make_unique<Bishop>(undo.capturedPieceColor); break;
-                case Piece::ROOK:   m_board[move.toX][move.toY] = std::make_unique<Rook>(undo.capturedPieceColor); break;
-                case Piece::QUEEN:  m_board[move.toX][move.toY] = std::make_unique<Queen>(undo.capturedPieceColor); break;
-                case Piece::KING:   m_board[move.toX][move.toY] = std::make_unique<King>(undo.capturedPieceColor); break; // Should not happen
+                case Chess::PAWN:   m_board[move.toX][move.toY] = std::make_unique<Pawn>(undo.capturedPieceColor); break;
+                case Chess::KNIGHT: m_board[move.toX][move.toY] = std::make_unique<Knight>(undo.capturedPieceColor); break;
+                case Chess::BISHOP: m_board[move.toX][move.toY] = std::make_unique<Bishop>(undo.capturedPieceColor); break;
+                case Chess::ROOK:   m_board[move.toX][move.toY] = std::make_unique<Rook>(undo.capturedPieceColor); break;
+                case Chess::QUEEN:  m_board[move.toX][move.toY] = std::make_unique<Queen>(undo.capturedPieceColor); break;
+                case Chess::KING:   m_board[move.toX][move.toY] = std::make_unique<King>(undo.capturedPieceColor); break; // Should not happen
                 default: m_board[move.toX][move.toY].reset(); break;
             }
         } else {
@@ -290,14 +290,14 @@ Game Game::makeMoveCopy(const Move& move) const
 // [대폭 최적화] Reverse Check (킹 기준 역탐색)
 // 모든 적 기물의 공격 범위를 계산하는 대신, 킹에게 도달할 수 있는 경로만 검사합니다.
 // 시간 복잡도가 O(N)에서 거의 O(1)로 줄어듭니다.
-bool Game::isCheck(Piece::PieceColor kingColor) const
+bool Game::isCheck(Chess::PieceColor kingColor) const
 {
     int kx, ky;
     // 캐싱된 좌표 사용
-    if (kingColor == Piece::WHITE) { kx = m_wKingX; ky = m_wKingY; }
+    if (kingColor == Chess::WHITE) { kx = m_wKingX; ky = m_wKingY; }
     else                           { kx = m_bKingX; ky = m_bKingY; }
 
-    Piece::PieceColor enemyColor = (kingColor == Piece::WHITE) ? Piece::BLACK : Piece::WHITE;
+    Chess::PieceColor enemyColor = (kingColor == Chess::WHITE) ? Chess::BLACK : Chess::WHITE;
 
     // 1. 나이트 공격 확인
     static const int knDx[] = {1, 1, 2, 2, -1, -1, -2, -2};
@@ -307,24 +307,24 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
         int ny = ky + knDy[i];
         if(nx>=0 && nx<8 && ny>=0 && ny<8) {
             Piece* p = m_board[nx][ny].get();
-            if(p && p->getColor() == enemyColor && p->getType() == Piece::KNIGHT) return true;
+            if(p && p->getColor() == enemyColor && p->getType() == Chess::KNIGHT) return true;
         }
     }
 
     // 2. 폰 공격 확인
     // 내 킹을 공격할 수 있는 '적 폰의 위치'를 확인합니다.
     // 적 폰이 이동해오는 방향의 반대쪽 대각선에 적 폰이 있어야 함
-    int pawnDir = (kingColor == Piece::WHITE) ? -1 : 1; 
+    int pawnDir = (kingColor == Chess::WHITE) ? -1 : 1; 
 
     int py = ky + pawnDir; 
     if(py >= 0 && py < 8) {
         if(kx > 0) {
             Piece* p = m_board[kx-1][py].get();
-            if(p && p->getColor() == enemyColor && p->getType() == Piece::PAWN) return true;
+            if(p && p->getColor() == enemyColor && p->getType() == Chess::PAWN) return true;
         }
         if(kx < 7) {
             Piece* p = m_board[kx+1][py].get();
-            if(p && p->getColor() == enemyColor && p->getType() == Piece::PAWN) return true;
+            if(p && p->getColor() == enemyColor && p->getType() == Chess::PAWN) return true;
         }
     }
 
@@ -338,7 +338,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
             if(cx<0||cx>=8||cy<0||cy>=8) break;
             Piece* p = m_board[cx][cy].get();
             if(p) {
-                if(p->getColor() == enemyColor && (p->getType() == Piece::ROOK || p->getType() == Piece::QUEEN)) return true;
+                if(p->getColor() == enemyColor && (p->getType() == Chess::ROOK || p->getType() == Chess::QUEEN)) return true;
                 break; 
             }
         }
@@ -354,7 +354,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
             if(cx<0||cx>=8||cy<0||cy>=8) break;
             Piece* p = m_board[cx][cy].get();
             if(p) {
-                if(p->getColor() == enemyColor && (p->getType() == Piece::BISHOP || p->getType() == Piece::QUEEN)) return true;
+                if(p->getColor() == enemyColor && (p->getType() == Chess::BISHOP || p->getType() == Chess::QUEEN)) return true;
                 break;
             }
         }
@@ -367,7 +367,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
             int nx = kx+dx, ny = ky+dy;
             if(nx>=0 && nx<8 && ny>=0 && ny<8) {
                 Piece* p = m_board[nx][ny].get();
-                if(p && p->getColor() == enemyColor && p->getType() == Piece::KING) return true;
+                if(p && p->getColor() == enemyColor && p->getType() == Chess::KING) return true;
             }
         }
     }
@@ -375,7 +375,7 @@ bool Game::isCheck(Piece::PieceColor kingColor) const
     return false;
 }
 
-bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
+bool Game::isSquareAttacked(int x, int y, Chess::PieceColor attackerColor) const
 {
     // 1. 나이트 공격 확인
     static const int knDx[] = {1, 1, 2, 2, -1, -1, -2, -2};
@@ -385,21 +385,21 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
         int ny = y + knDy[i];
         if(nx>=0 && nx<8 && ny>=0 && ny<8) {
             Piece* p = m_board[nx][ny].get();
-            if(p && p->getColor() == attackerColor && p->getType() == Piece::KNIGHT) return true;
+            if(p && p->getColor() == attackerColor && p->getType() == Chess::KNIGHT) return true;
         }
     }
 
     // 2. 폰 공격 확인
-    int pawnDir = (attackerColor == Piece::WHITE) ? -1 : 1; // 백은 y 감소, 흑은 y 증가 방향으로 공격
+    int pawnDir = (attackerColor == Chess::WHITE) ? -1 : 1; // 백은 y 감소, 흑은 y 증가 방향으로 공격
     int py = y + pawnDir;
     if(py >= 0 && py < 8) {
         if(x > 0) {
             Piece* p = m_board[x-1][py].get();
-            if(p && p->getColor() == attackerColor && p->getType() == Piece::PAWN) return true;
+            if(p && p->getColor() == attackerColor && p->getType() == Chess::PAWN) return true;
         }
         if(x < 7) {
             Piece* p = m_board[x+1][py].get();
-            if(p && p->getColor() == attackerColor && p->getType() == Piece::PAWN) return true;
+            if(p && p->getColor() == attackerColor && p->getType() == Chess::PAWN) return true;
         }
     }
 
@@ -413,7 +413,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
             if(cx<0||cx>=8||cy<0||cy>=8) break;
             Piece* p = m_board[cx][cy].get();
             if(p) {
-                if(p->getColor() == attackerColor && (p->getType() == Piece::ROOK || p->getType() == Piece::QUEEN)) return true;
+                if(p->getColor() == attackerColor && (p->getType() == Chess::ROOK || p->getType() == Chess::QUEEN)) return true;
                 break;
             }
         }
@@ -429,7 +429,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
             if(cx<0||cx>=8||cy<0||cy>=8) break;
             Piece* p = m_board[cx][cy].get();
             if(p) {
-                if(p->getColor() == attackerColor && (p->getType() == Piece::BISHOP || p->getType() == Piece::QUEEN)) return true;
+                if(p->getColor() == attackerColor && (p->getType() == Chess::BISHOP || p->getType() == Chess::QUEEN)) return true;
                 break;
             }
         }
@@ -442,7 +442,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
             int nx = x+dx, ny = y+dy;
             if(nx>=0 && nx<8 && ny>=0 && ny<8) {
                 Piece* p = m_board[nx][ny].get();
-                if(p && p->getColor() == attackerColor && p->getType() == Piece::KING) return true;
+                if(p && p->getColor() == attackerColor && p->getType() == Chess::KING) return true;
             }
         }
     }
@@ -461,21 +461,21 @@ bool Game::isInsufficientMaterial() const
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
             Piece* p = m_board[x][y].get();
-            if (p == nullptr || p->getType() == Piece::KING) continue;
+            if (p == nullptr || p->getType() == Chess::KING) continue;
 
             // 퀸, 룩, 폰이 하나라도 있으면 기물 부족 아님
-            if (p->getType() == Piece::QUEEN || p->getType() == Piece::ROOK || p->getType() == Piece::PAWN) {
+            if (p->getType() == Chess::QUEEN || p->getType() == Chess::ROOK || p->getType() == Chess::PAWN) {
                 return false;
             }
 
             num_pieces++;
 
-            if (p->getColor() == Piece::WHITE) {
-                if (p->getType() == Piece::KNIGHT) white_knights++;
-                else if (p->getType() == Piece::BISHOP) white_bishops++;
+            if (p->getColor() == Chess::WHITE) {
+                if (p->getType() == Chess::KNIGHT) white_knights++;
+                else if (p->getType() == Chess::BISHOP) white_bishops++;
             } else {
-                if (p->getType() == Piece::KNIGHT) black_knights++;
-                else if (p->getType() == Piece::BISHOP) black_bishops++;
+                if (p->getType() == Chess::KNIGHT) black_knights++;
+                else if (p->getType() == Chess::BISHOP) black_bishops++;
             }
         }
     }
@@ -494,7 +494,7 @@ bool Game::isInsufficientMaterial() const
         for (int y = 0; y < 8; ++y) {
             for (int x = 0; x < 8; ++x) {
                 Piece* p = m_board[x][y].get();
-                if (p != nullptr && p->getType() == Piece::BISHOP) {
+                if (p != nullptr && p->getType() == Chess::BISHOP) {
                     if (b1_color == -1) b1_color = (x + y) % 2;
                     else b2_color = (x + y) % 2;
                 }
@@ -535,7 +535,7 @@ std::vector<Move> Game::generateMoves(int x, int y)
     return legalMoves;
 }
 
-std::vector<Move> Game::generateMoves(Piece::PieceColor color)
+std::vector<Move> Game::generateMoves(Chess::PieceColor color)
 {
     std::vector<Move> possibleMoves;
     possibleMoves.reserve(64); // 메모리 재할당 최소화
@@ -593,7 +593,7 @@ Game::GameState Game::getGameState()
     }
 
     // 4. 체크메이트 / 스테일메이트 검사
-    vector<Move> moves = generateMoves(p_currentTurn);
+    std::vector<Move> moves = generateMoves(p_currentTurn);
     if (moves.empty()) {
         if (isCheck(p_currentTurn)) {
             return CHECKMATE;
@@ -616,9 +616,9 @@ bool Game::isGameOver()
     return getGameState() != IN_PROGRESS;
 }
 
-bool Game::canCastle(Piece::PieceColor color, bool isKingSide) const
+bool Game::canCastle(Chess::PieceColor color, bool isKingSide) const
 {
-    if (color == Piece::WHITE) {
+    if (color == Chess::WHITE) {
         return isKingSide ? w_castle_ks : w_castle_qs;
     } else {
         return isKingSide ? b_castle_ks : b_castle_qs;

@@ -1,4 +1,5 @@
 #include "chessboardwidget.h"
+#include "piece.h"
 #include <QDebug>
 #include <QCoreApplication>
 #include <QPainter>
@@ -76,16 +77,16 @@ void ChessBoardWidget::drawPieces(QPainter &painter)
 
             QString text;
             switch (p->getType()) {
-            case Piece::PAWN: text = "P"; break;
-            case Piece::ROOK: text = "R"; break;
-            case Piece::KNIGHT: text = "N"; break;
-            case Piece::BISHOP: text = "B"; break;
-            case Piece::QUEEN: text = "Q"; break;
-            case Piece::KING: text = "K"; break;
+            case Chess::PAWN: text = "P"; break;
+            case Chess::ROOK: text = "R"; break;
+            case Chess::KNIGHT: text = "N"; break;
+            case Chess::BISHOP: text = "B"; break;
+            case Chess::QUEEN: text = "Q"; break;
+            case Chess::KING: text = "K"; break;
             default: text = "?"; break;
             }
 
-            if (p->getColor() == Piece::WHITE) {
+            if (p->getColor() == Chess::WHITE) {
                 painter.setPen(QColor(245, 245, 245));
             } else {
                 painter.setPen(QColor(30, 30, 30));
@@ -137,7 +138,7 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
                 QCoreApplication::processEvents();
 
                 if (m_currentMode == aiMode && !m_game.isGameOver()) {
-                    Move aiMove = AI::findBestMove(m_game, Piece::BLACK);
+                    Move aiMove = AI::findBestMove(m_game, Chess::BLACK);
                     if (!aiMove.isNull()) {
                         UndoInfo ai_undo = m_game.makeMove(aiMove);
                         qDebug() << "AI Moved:" << aiMove.fromX << aiMove.fromY << "->" << aiMove.toX << aiMove.toY;
@@ -154,7 +155,7 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
     Piece* p = m_game.getPiece(col, row);
 
     if (p && p->getColor() == m_game.getCurrentTurn()) {
-        if (m_currentMode == aiMode && p->getColor() == Piece::BLACK) {
+        if (m_currentMode == aiMode && p->getColor() == Chess::BLACK) {
             return;
         }
 
