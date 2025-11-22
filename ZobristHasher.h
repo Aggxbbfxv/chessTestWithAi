@@ -2,7 +2,9 @@
 #define ZOBRISTHASHER_H
 
 #include <cstdint>
-#include "game.h"
+#include "types.h"
+
+class Game;
 
 class ZobristHasher {
 public:

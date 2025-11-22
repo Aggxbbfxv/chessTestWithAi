@@ -10,7 +10,8 @@
 // 이동 실행 취소에 필요한 정보를 담는 구조체
 struct UndoInfo
 {
-    Piece* capturedPiece;
+    Piece::PieceType capturedPieceType;
+    Piece::PieceColor capturedPieceColor;
     bool w_castle_ks;
     bool w_castle_qs;
     bool b_castle_ks;
@@ -28,6 +29,7 @@ public:
 
     Game();
     Game(const Game& other);
+    Game& operator=(const Game& other) = delete; // 복사 할당 연산자 비활성화
     ~Game();
 
     void resetBoard();

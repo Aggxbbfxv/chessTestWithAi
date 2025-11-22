@@ -141,23 +141,31 @@ UndoInfo Game::makeMove(const Move& move)
     // 3. 50수 카운터 및 캡처 처리
     fiftyMoveCounter++;
     Piece* capturedPiece = nullptr;
+    undo.capturedPieceType = Piece::EMPTY; // 기본값
+
     if (move.moveType == Move::EN_PASSANT) {
         int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
         capturedPiece = m_board[move.toX][capturedPawnY];
+        undo.capturedPieceType = capturedPiece->getType();
+        undo.capturedPieceColor = capturedPiece->getColor();
         newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, capturedPawnY);
         m_board[move.toX][capturedPawnY] = nullptr;
+        delete capturedPiece; // 메모리 누수 방지
         fiftyMoveCounter = 0;
     } else {
         capturedPiece = m_board[move.toX][move.toY];
         if (capturedPiece != nullptr) {
+            undo.capturedPieceType = capturedPiece->getType();
+            undo.capturedPieceColor = capturedPiece->getColor();
             newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, move.toY);
+            delete capturedPiece; // 메모리 누수 방지
             fiftyMoveCounter = 0;
         }
     }
     if (pieceToMove->getType() == Piece::PAWN) {
         fiftyMoveCounter = 0;
     }
-    undo.capturedPiece = capturedPiece;
+    // undo.capturedPiece = capturedPiece; // 이제 사용 안 함
 
     // 4. 기물 이동 (출발지에서 제거)
     m_board[move.fromX][move.fromY] = nullptr;
@@ -256,9 +264,28 @@ void Game::unmakeMove(const Move& move, const UndoInfo& undo)
     if (move.moveType == Move::EN_PASSANT) {
         m_board[move.toX][move.toY] = nullptr;
         int capturedPawnY = (movingColor == Piece::WHITE) ? move.toY + 1 : move.toY - 1;
-        m_board[move.toX][capturedPawnY] = undo.capturedPiece;
+        
+        // 캡처된 폰 재생성
+        Piece* capturedPawn = new Pawn(undo.capturedPieceColor);
+        m_board[move.toX][capturedPawnY] = capturedPawn;
+
     } else {
-        m_board[move.toX][move.toY] = undo.capturedPiece;
+        // 캡처된 기물 재생성
+        if (undo.capturedPieceType != Piece::EMPTY) {
+            Piece* capturedPiece = nullptr;
+            switch(undo.capturedPieceType) {
+                case Piece::PAWN:   capturedPiece = new Pawn(undo.capturedPieceColor); break;
+                case Piece::KNIGHT: capturedPiece = new Knight(undo.capturedPieceColor); break;
+                case Piece::BISHOP: capturedPiece = new Bishop(undo.capturedPieceColor); break;
+                case Piece::ROOK:   capturedPiece = new Rook(undo.capturedPieceColor); break;
+                case Piece::QUEEN:  capturedPiece = new Queen(undo.capturedPieceColor); break;
+                case Piece::KING:   capturedPiece = new King(undo.capturedPieceColor); break; // Should not happen
+                default: break;
+            }
+            m_board[move.toX][move.toY] = capturedPiece;
+        } else {
+            m_board[move.toX][move.toY] = nullptr;
+        }
     }
 
     if (move.moveType == Move::CASTLE_KS) {
@@ -382,7 +409,7 @@ bool Game::isSquareAttacked(int x, int y, Piece::PieceColor attackerColor) const
     }
 
     // 2. 폰 공격 확인
-    int pawnDir = (attackerColor == Piece::WHITE) ? 1 : -1;
+    int pawnDir = (attackerColor == Piece::WHITE) ? -1 : 1; // 백은 y 감소, 흑은 y 증가 방향으로 공격
     int py = y + pawnDir;
     if(py >= 0 && py < 8) {
         if(x > 0) {
@@ -597,15 +624,15 @@ Game::GameState Game::getGameState()
     return IN_PROGRESS;
 }
 
-bool Game::isGameOver() const
+bool Game::isGameOver()
 {
     // getGameState는 non-const이므로 const_cast를 사용하거나,
     // getGameState를 const로 만들거나, isGameOver에서 로직을 중복 구현해야 합니다.
     // generateMoves가 non-const인 것이 문제의 근원입니다.
     // generateMoves를 const로 변경하는 것이 가장 이상적이지만,
     // 내부적으로 makeMove/unmakeMove를 사용하므로 수정 범위가 커집니다.
-    // 여기서는 임시로 const_cast를 사용하여 문제를 해결합니다.
-    return const_cast<Game*>(this)->getGameState() != IN_PROGRESS;
+    // 여기서는 const 한정자를 제거하여 문제를 해결합니다.
+    return getGameState() != IN_PROGRESS;
 }
 
 bool Game::canCastle(Piece::PieceColor color, bool isKingSide) const

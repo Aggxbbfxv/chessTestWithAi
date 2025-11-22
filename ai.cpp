@@ -6,7 +6,7 @@
 
 int AI::nodeCount = 0;
 
-const Piece::PieceColor aiColor = Piece::BLACK; //ai 설정은 검정!
+
 
 // ... (PST 테이블 변수는 그대로 유지됩니다) ...
 const int AI::pawnPST[8][8] = {
@@ -104,7 +104,7 @@ int AI::scoreMove(const Game& game, const Move& move)
     return score;
 }
 
-int AI::eval(const Game& game)
+int AI::eval(const Game& game, Piece::PieceColor colorToMax)
 {
     int totalScore = 0;
     int numMajorPieces = 0; // 퀸, 룩 카운트
@@ -142,7 +142,7 @@ int AI::eval(const Game& game)
                 default: break;
                 }
 
-                if(p->getColor() == aiColor)
+                if(p->getColor() == colorToMax)
                     totalScore += pieceScore;
                 else
                     totalScore -= pieceScore;
@@ -152,7 +152,7 @@ int AI::eval(const Game& game)
     return totalScore;
 }
 
-int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
+int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Piece::PieceColor aiColor)
 {
     nodeCount++;
 
@@ -174,7 +174,7 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
     // 깊이 제한에 도달하면 평가 함수 호출
     if(depth == 0)
     {
-        return eval(state);
+        return eval(state, aiColor);
     }
 
     vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
@@ -191,7 +191,7 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
         {
             UndoInfo undo = state.makeMove(move);
             
-            int evalScore = alphabeta(state, depth - 1, alpha, beta, false);
+            int evalScore = alphabeta(state, depth - 1, alpha, beta, false, aiColor);
 
             state.unmakeMove(move, undo);
 
@@ -209,7 +209,7 @@ int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing)
         {
             UndoInfo undo = state.makeMove(move);
 
-            int evalScore = alphabeta(state, depth - 1, alpha, beta, true);
+            int evalScore = alphabeta(state, depth - 1, alpha, beta, true, aiColor);
 
             state.unmakeMove(move, undo);
 
@@ -228,7 +228,7 @@ struct MoveScore {
     int score;
 };
 
-Move AI::findBestMove(const Game& game)
+Move AI::findBestMove(const Game& game, Piece::PieceColor aiColor)
 {
     if(game.getCurrentTurn() != aiColor) return Move();
 
@@ -264,7 +264,7 @@ Move AI::findBestMove(const Game& game)
             UndoInfo undo = rootGame.makeMove(move);
 
             // 재귀 호출 (AI가 수를 뒀으므로 다음은 상대방 턴, 즉 min-node)
-            int score = alphabeta(rootGame, currentDepth - 1, alpha, beta, false);
+            int score = alphabeta(rootGame, currentDepth - 1, alpha, beta, false, aiColor);
             
             rootGame.unmakeMove(move, undo);
 

@@ -130,9 +130,6 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
         for (const Move& m : m_validMoves) {
             if (m.toX == col && m.toY == row) {
                 UndoInfo undo = m_game.makeMove(m);
-                if (undo.capturedPiece != nullptr) {
-                    delete undo.capturedPiece;
-                }
 
                 m_selectedPos = QPoint(-1, -1);
                 m_validMoves.clear();
@@ -140,12 +137,9 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
                 QCoreApplication::processEvents();
 
                 if (m_currentMode == aiMode && !m_game.isGameOver()) {
-                    Move aiMove = AI::findBestMove(m_game);
+                    Move aiMove = AI::findBestMove(m_game, Piece::BLACK);
                     if (!aiMove.isNull()) {
                         UndoInfo ai_undo = m_game.makeMove(aiMove);
-                        if (ai_undo.capturedPiece != nullptr) {
-                            delete ai_undo.capturedPiece;
-                        }
                         qDebug() << "AI Moved:" << aiMove.fromX << aiMove.fromY << "->" << aiMove.toX << aiMove.toY;
                     } else {
                         qDebug() << "AI cannot move (Stalemate or Checkmate?)";

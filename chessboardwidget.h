@@ -3,12 +3,13 @@
 
 #include <QWidget>
 #include <QPoint>
+#include <QThread>
 #include "game.h"
 #include "move.h"
+#include "aiworker.h"
 #include <vector>
 #include <QPainter>
 #include <QMouseEvent>
-#include <ai.h>
 
 
 class ChessBoardWidget : public QWidget
@@ -23,12 +24,20 @@ public:
     };
 
     explicit ChessBoardWidget(QWidget *parent = nullptr);
+    ~ChessBoardWidget();
     QSize sizeHint() const override;
 
     void setGameMode(gameMode mode);
 
 public slots:
     void startGame();
+
+private slots:
+    void onAiMoveFound(Move move);
+
+signals:
+    void requestAiMove(const Game& game);
+
 
 private:
     void paintEvent(QPaintEvent *event) override;
@@ -38,14 +47,14 @@ private:
     void drawPieces(QPainter &painter);
     void drawHighlights(QPainter &painter);
 
-    // °ÔÀÓ ·ÎÁ÷ °´Ã¼
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼
     Game m_game;
 
-    // UI ÀÎÅÍ·¢¼Ç º¯¼ö
-    QPoint m_selectedPos;          // ÇöÀç ¼±ÅÃµÈ ÁÂÇ¥
-    std::vector<Move> m_validMoves; // ¼±ÅÃµÈ ±â¹°ÀÌ °¥ ¼ö ÀÖ´Â °÷µé
+    // UI ï¿½ï¿½ï¿½Í·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    QPoint m_selectedPos;          // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ãµï¿½ ï¿½ï¿½Ç¥
+    std::vector<Move> m_validMoves; // ï¿½ï¿½ï¿½Ãµï¿½ ï¿½â¹°ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-    gameMode m_currentMode; // [Ãß°¡] ÇöÀç °ÔÀÓ ¸ðµå ÀúÀå º¯¼ö
+    gameMode m_currentMode; // [ï¿½ß°ï¿½] ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 };
 
 #endif

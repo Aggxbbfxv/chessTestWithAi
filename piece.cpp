@@ -3,23 +3,21 @@
 #include <cmath>
 #include <vector>
 
-using namespace std;
-
 int Piece::getValue() const
 {
     switch(p_type)
     {
-    case PAWN: return 100;
-    case KNIGHT: return 300;
-    case BISHOP: return 310;
-    case ROOK: return 500;
-    case QUEEN: return 900;
-    case KING: return 20000;
+    case Piece::PAWN: return 100;
+    case Piece::KNIGHT: return 300;
+    case Piece::BISHOP: return 310;
+    case Piece::ROOK: return 500;
+    case Piece::QUEEN: return 900;
+    case Piece::KING: return 20000;
     default: return 0;
     }
 }
 
-static void addStraightMove(vector<Move>& moves, const Game& game, Piece::PieceColor color, int x, int y, int dx, int dy)
+static void addStraightMove(std::vector<Move>& moves, const Game& game, Piece::PieceColor color, int x, int y, int dx, int dy)
 {
     int newX = x + dx;
     int newY = y + dy;
@@ -48,7 +46,7 @@ static void addStraightMove(vector<Move>& moves, const Game& game, Piece::PieceC
 
 Piece* Pawn::clone() const { return new Pawn(*this); }
 
-void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
+void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
     int direction = (p_color == Piece::WHITE) ? -1 : 1;
     int promotionRank = (p_color == Piece::WHITE) ? 0 : 7;
@@ -58,10 +56,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
     if(oneStepY >= 0 && oneStepY < 8 && game.getPiece(x, oneStepY) == nullptr)
     {
         if (oneStepY == promotionRank) { // 프로모션
-            moves.emplace_back(x, y, x, oneStepY, (int)Piece::QUEEN);
-            moves.emplace_back(x, y, x, oneStepY, (int)Piece::ROOK);
-            moves.emplace_back(x, y, x, oneStepY, (int)Piece::BISHOP);
-            moves.emplace_back(x, y, x, oneStepY, (int)Piece::KNIGHT);
+            moves.emplace_back(x, y, x, oneStepY, Piece::QUEEN);
+            moves.emplace_back(x, y, x, oneStepY, Piece::ROOK);
+            moves.emplace_back(x, y, x, oneStepY, Piece::BISHOP);
+            moves.emplace_back(x, y, x, oneStepY, Piece::KNIGHT);
         } else {
             moves.emplace_back(x, y, x, oneStepY);
         }
@@ -89,10 +87,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
             if(leftTarget && leftTarget->getColor() != p_color)
             {
                 if (captureY == promotionRank) { // 프로모션
-                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::QUEEN);
-                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::ROOK);
-                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::BISHOP);
-                    moves.emplace_back(x, y, x - 1, captureY, (int)Piece::KNIGHT);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::QUEEN);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::ROOK);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::BISHOP);
+                    moves.emplace_back(x, y, x - 1, captureY, Piece::KNIGHT);
                 } else {
                     moves.emplace_back(x, y, x - 1, captureY);
                 }
@@ -105,10 +103,10 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
             if(rightTarget && rightTarget->getColor() != p_color)
             {
                 if (captureY == promotionRank) { // 프로모션
-                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::QUEEN);
-                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::ROOK);
-                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::BISHOP);
-                    moves.emplace_back(x, y, x + 1, captureY, (int)Piece::KNIGHT);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::QUEEN);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::ROOK);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::BISHOP);
+                    moves.emplace_back(x, y, x + 1, captureY, Piece::KNIGHT);
                 } else {
                     moves.emplace_back(x, y, x + 1, captureY);
                 }
@@ -134,7 +132,7 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
 
 Piece* Knight::clone() const { return new Knight(*this); }
 
-void Knight::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
+void Knight::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
     static const int dx[] = {1,1,2,2,-1,-1,-2,-2};
     static const int dy[] = {2,-2,1,-1,2,-2,1,-1};
@@ -157,7 +155,7 @@ void Knight::addPossibleMoves(const Game& game, int x, int y, vector<Move>& move
 
 Piece* Bishop::clone() const { return new Bishop(*this); }
 
-void Bishop::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
+void Bishop::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
     addStraightMove(moves, game, p_color, x, y, 1, 1);
     addStraightMove(moves, game, p_color, x, y, 1, -1);
@@ -167,7 +165,7 @@ void Bishop::addPossibleMoves(const Game& game, int x, int y, vector<Move>& move
 
 Piece* Rook::clone() const { return new Rook(*this); }
 
-void Rook::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
+void Rook::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
     addStraightMove(moves, game, p_color, x, y, 0, 1);
     addStraightMove(moves, game, p_color, x, y, 0, -1);
@@ -177,7 +175,7 @@ void Rook::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
 
 Piece* Queen::clone() const { return new Queen(*this); }
 
-void Queen::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
+void Queen::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
     addStraightMove(moves, game, p_color, x, y, 1, 1);
     addStraightMove(moves, game, p_color, x, y, 1, -1);
@@ -191,7 +189,7 @@ void Queen::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves
 
 Piece* King::clone() const { return new King(*this); }
 
-void King::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves) const
+void King::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& moves) const
 {
     for(int dx = -1; dx <= 1; ++dx)
     {
@@ -233,7 +231,7 @@ void King::addPossibleMoves(const Game& game, int x, int y, vector<Move>& moves)
     // 퀸사이드 캐슬링
     if (game.canCastle(p_color, false))
     {
-        if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr && game.getPiece(x - 3, y) == nullptr)
+        if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr)
         {
             if (!game.isSquareAttacked(x, y, enemyColor) &&
                 !game.isSquareAttacked(x - 1, y, enemyColor) &&
