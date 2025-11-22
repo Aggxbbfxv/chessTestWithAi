@@ -123,7 +123,7 @@ int AI::eval(const Game& game, Chess::PieceColor colorToMax)
                 }
 
                 int pieceScore = p->getValue();
-                int pstY = (p->getColor() == Chess::WHITE) ? (7 - y) : y;
+                int pstY = (p->getColor() == Chess::WHITE) ? y : (7 - y);
 
                 switch (p->getType())
                 {
