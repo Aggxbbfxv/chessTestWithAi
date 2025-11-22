@@ -51,11 +51,11 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
     int direction = (p_color == Chess::WHITE) ? -1 : 1;
     int promotionRank = (p_color == Chess::WHITE) ? 0 : 7;
 
-    // 한 칸 전진
+    // Forward pushes
     int oneStepY = y + direction;
     if(oneStepY >= 0 && oneStepY < 8 && game.getPiece(x, oneStepY) == nullptr)
     {
-        if (oneStepY == promotionRank) { // 프로모션
+        if (oneStepY == promotionRank) {
             moves.emplace_back(x, y, x, oneStepY, Chess::QUEEN);
             moves.emplace_back(x, y, x, oneStepY, Chess::ROOK);
             moves.emplace_back(x, y, x, oneStepY, Chess::BISHOP);
@@ -64,7 +64,6 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
             moves.emplace_back(x, y, x, oneStepY);
         }
 
-        // 두 칸 전진 (첫 수일 때)
         int startRow = (p_color == Chess::WHITE) ? 6 : 1;
         if(y == startRow)
         {
@@ -76,17 +75,16 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
         }
     }
 
-    // 대각선 캡처
+    // Diagonal captures
     int captureY = y + direction;
     if(captureY >= 0 && captureY < 8)
     {
-        // 왼쪽 캡처
         if(x > 0)
         {
             Piece* leftTarget = game.getPiece(x - 1, captureY);
             if(leftTarget && leftTarget->getColor() != p_color)
             {
-                if (captureY == promotionRank) { // 프로모션
+                if (captureY == promotionRank) {
                     moves.emplace_back(x, y, x - 1, captureY, Chess::QUEEN);
                     moves.emplace_back(x, y, x - 1, captureY, Chess::ROOK);
                     moves.emplace_back(x, y, x - 1, captureY, Chess::BISHOP);
@@ -96,13 +94,12 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
                 }
             }
         }
-        // 오른쪽 캡처
         if(x < 7)
         {
             Piece* rightTarget = game.getPiece(x + 1, captureY);
             if(rightTarget && rightTarget->getColor() != p_color)
             {
-                if (captureY == promotionRank) { // 프로모션
+                if (captureY == promotionRank) {
                     moves.emplace_back(x, y, x + 1, captureY, Chess::QUEEN);
                     moves.emplace_back(x, y, x + 1, captureY, Chess::ROOK);
                     moves.emplace_back(x, y, x + 1, captureY, Chess::BISHOP);
@@ -114,7 +111,7 @@ void Pawn::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
         }
     }
 
-    // 앙파상 로직
+    // En-passant
     int epTarget = game.getEnPassantTargetSquare();
     if (epTarget != -1) {
         int epX = epTarget % 8;
@@ -210,34 +207,34 @@ void King::addPossibleMoves(const Game& game, int x, int y, std::vector<Move>& m
         }
     }
 
-    // 캐슬링 로직 추가
+    // Castling
     Chess::PieceColor enemyColor = (p_color == Chess::WHITE) ? Chess::BLACK : Chess::WHITE;
     if (game.isCheck(p_color)) return;
 
-    // 킹사이드 캐슬링
-    if (game.canCastle(p_color, true))
-    {
-        if (game.getPiece(x + 1, y) == nullptr && game.getPiece(x + 2, y) == nullptr)
-        {
-            if (!game.isSquareAttacked(x, y, enemyColor) &&
-                !game.isSquareAttacked(x + 1, y, enemyColor) &&
-                !game.isSquareAttacked(x + 2, y, enemyColor))
-            {
-                moves.emplace_back(x, y, x + 2, y, Move::CASTLE_KS);
+    // King-side castling
+    if (game.canCastle(p_color, true)) {
+        Piece* rook = game.getPiece(7, y);
+        if (rook && rook->getType() == Chess::ROOK && rook->getColor() == p_color) {
+            if (game.getPiece(x + 1, y) == nullptr && game.getPiece(x + 2, y) == nullptr) {
+                if (!game.isSquareAttacked(x, y, enemyColor) &&
+                    !game.isSquareAttacked(x + 1, y, enemyColor) &&
+                    !game.isSquareAttacked(x + 2, y, enemyColor)) {
+                    moves.emplace_back(x, y, x + 2, y, Move::CASTLE_KS);
+                }
             }
         }
     }
 
-    // 퀸사이드 캐슬링
-    if (game.canCastle(p_color, false))
-    {
-        if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr && game.getPiece(x - 3, y) == nullptr)
-        {
-            if (!game.isSquareAttacked(x, y, enemyColor) &&
-                !game.isSquareAttacked(x - 1, y, enemyColor) &&
-                !game.isSquareAttacked(x - 2, y, enemyColor))
-            {
-                moves.emplace_back(x, y, x - 2, y, Move::CASTLE_QS);
+    // Queen-side castling
+    if (game.canCastle(p_color, false)) {
+        Piece* rook = game.getPiece(0, y);
+        if (rook && rook->getType() == Chess::ROOK && rook->getColor() == p_color) {
+            if (game.getPiece(x - 1, y) == nullptr && game.getPiece(x - 2, y) == nullptr && game.getPiece(x - 3, y) == nullptr) {
+                if (!game.isSquareAttacked(x, y, enemyColor) &&
+                    !game.isSquareAttacked(x - 1, y, enemyColor) &&
+                    !game.isSquareAttacked(x - 2, y, enemyColor)) {
+                    moves.emplace_back(x, y, x - 2, y, Move::CASTLE_QS);
+                }
             }
         }
     }

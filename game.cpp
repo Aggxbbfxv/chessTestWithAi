@@ -135,6 +135,16 @@ UndoInfo Game::makeMove(const Move& move)
     std::unique_ptr<Piece> capturedPiece = nullptr;
     undo.capturedPieceType = Chess::EMPTY;
 
+    auto removeCastleRight = [&](Chess::PieceColor color, bool kingSide) {
+        if (color == Chess::WHITE) {
+            if (kingSide && w_castle_ks) { newHash ^= hasher.getCastleKey(Chess::WHITE, true); w_castle_ks = false; }
+            if (!kingSide && w_castle_qs) { newHash ^= hasher.getCastleKey(Chess::WHITE, false); w_castle_qs = false; }
+        } else {
+            if (kingSide && b_castle_ks) { newHash ^= hasher.getCastleKey(Chess::BLACK, true); b_castle_ks = false; }
+            if (!kingSide && b_castle_qs) { newHash ^= hasher.getCastleKey(Chess::BLACK, false); b_castle_qs = false; }
+        }
+    };
+
     if (move.moveType == Move::EN_PASSANT) {
         int capturedPawnY = (movingColor == Chess::WHITE) ? move.toY + 1 : move.toY - 1;
         capturedPiece = std::move(m_board[move.toX][capturedPawnY]);
@@ -151,6 +161,15 @@ UndoInfo Game::makeMove(const Move& move)
             undo.capturedPieceColor = capturedPiece->getColor();
             newHash ^= hasher.getPieceKey(capturedPiece->getType(), capturedPiece->getColor(), move.toX, move.toY);
             fiftyMoveCounter = 0;
+        }
+    }
+    if (capturedPiece && capturedPiece->getType() == Chess::ROOK) {
+        if (capturedPiece->getColor() == Chess::WHITE) {
+            if (move.toX == 0 && move.toY == 7) removeCastleRight(Chess::WHITE, false);
+            else if (move.toX == 7 && move.toY == 7) removeCastleRight(Chess::WHITE, true);
+        } else {
+            if (move.toX == 0 && move.toY == 0) removeCastleRight(Chess::BLACK, false);
+            else if (move.toX == 7 && move.toY == 0) removeCastleRight(Chess::BLACK, true);
         }
     }
     if (pieceToMoveRaw->getType() == Chess::PAWN) {

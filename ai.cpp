@@ -2,81 +2,81 @@
 #include "piece.h"
 #include <vector>
 #include <algorithm>
+#include <limits>
 #include <QElapsedTimer>
 #include <QDebug>
+#include <QString>
 
 int AI::nodeCount = 0;
+std::unordered_map<uint64_t, AI::TTEntry> AI::transpositionTable;
 
-
-
-// ... (PST 테이블 변수는 그대로 유지됩니다) ...
+// Piece-square tables tuned on a simple centipawn scale
 const int AI::pawnPST[8][8] = {
-    {9000,  9000,   9000,   9000,   9000,   9000,   9000,   9000},
-    {200,   200,    200,    200,    200,    200,    200,    200},
-    {100,   100,    100,    100,    100,    100,    100,    100},
-    {40,    40,     90,     100,    100,    90,     40,     40},
-    {20,    20,     20,     100,    150,    20,     20,     20},
-    {2,     4,      0,      15,     4,      0,      4,      2},
-    {-10,   -10,    -10,    -20,    -35,    -10,    -10,    -10},
-    {0,     0,      0,      0,      0,      0,      0,      0}
+    {0,   0,   0,   0,   0,   0,   0,   0},
+    {50, 50,  50,  50,  50,  50,  50,  50},
+    {10, 10,  20,  30,  30,  20,  10,  10},
+    {5,   5,  10,  25,  25,  10,   5,   5},
+    {0,   0,   0,  20,  20,   0,   0,   0},
+    {5,  -5, -10,   0,   0, -10,  -5,   5},
+    {5,  10,  10, -20, -20,  10,  10,   5},
+    {0,   0,   0,   0,   0,   0,   0,   0}
 };
 
 const int AI::knightPST[8][8] = {
-    {-20, -80, -60, -60, -60, -60, -80, -20},
-    {-80, -40,   0,   0,   0,   0, -40, -80},
-    {-60,   0,  20,  30,  30,  20,   0, -60},
-    {-60,  10,  30,  40,  40,  30,  10, -60},
-    {-60,   0,  30,  40,  40,  30,   0, -60},
-    {-60,  10,  20,  30,  30,  30,   1, -60},
-    {-80, -40,   0,  10,  10,   0,  -4, -80},
-    {-20, -80, -60, -60, -60, -60, -80, -20},
+    {-50, -40, -30, -30, -30, -30, -40, -50},
+    {-40, -20,   0,   0,   0,   0, -20, -40},
+    {-30,   0,  10,  15,  15,  10,   0, -30},
+    {-30,   5,  15,  20,  20,  15,   5, -30},
+    {-30,   0,  15,  20,  20,  15,   0, -30},
+    {-30,   5,  10,  15,  15,  10,   5, -30},
+    {-40, -20,   0,   5,   5,   0, -20, -40},
+    {-50, -40, -30, -30, -30, -30, -40, -50}
 };
 
 const int AI::bishopPST[8][8] = {
-    {-40, -20, -20, -20, -20, -20, -20, -40},
-    {-20,   0,   0,   0,   0,   0,   0, -20},
-    {-20,   0,  10,  20,  20,  10,   0, -20},
-    {-20,  10,  10,  20,  20,  10,  10, -20},
-    {-20,   0,  20,  20,  20,  20,   0, -20},
-    {-20,  20,  20,  20,  20,  20,  20, -20},
-    {-20,  10,   0,   0,   0,   0,  10, -20},
-    {-40, -20, -20, -20, -20, -20, -20, -40}
+    {-20, -10, -10, -10, -10, -10, -10, -20},
+    {-10,   5,   0,   0,   0,   0,   5, -10},
+    {-10,  10,  10,  10,  10,  10,  10, -10},
+    {-10,   0,  10,  10,  10,  10,   0, -10},
+    {-10,   5,   5,  10,  10,   5,   5, -10},
+    {-10,   0,   5,  10,  10,   5,   0, -10},
+    {-10,   0,   0,   0,   0,   0,   0, -10},
+    {-20, -10, -10, -10, -10, -10, -10, -20}
 };
 
 const int AI::rookPST[8][8] = {
-    {0,  0,  0,  0,  0,  0,  0,   0},
-    {10, 20, 20, 20, 20, 20, 20,  10},
-    {-10,  0,  0,  0,  0,  0,  0, -10},
-    {-10,  0,  0,  0,  0,  0,  0, -10},
-    {-10,  0,  0,  0,  0,  0,  0, -10},
-    {-10,  0,  0,  0,  0,  0,  0, -10},
-    {-10,  0,  0,  0,  0,  0,  0, -10},
-    {-30, 30, 40, 10, 10,  0,  0, -30}
+    {0,   0,   0,   0,   0,   0,   0,   0},
+    {5,  10,  10,  10,  10,  10,  10,   5},
+    {-5,  0,   0,   0,   0,   0,   0,  -5},
+    {-5,  0,   0,   0,   0,   0,   0,  -5},
+    {-5,  0,   0,   0,   0,   0,   0,  -5},
+    {-5,  0,   0,   0,   0,   0,   0,  -5},
+    {-5,  0,   0,   0,   0,   0,   0,  -5},
+    {0,   0,   0,   5,   5,   0,   0,   0}
 };
 
 const int AI::queenPST[8][8] = {
-    {-40, -20, -20, -10, -10, -20, -20, -40},
-    {-20,   0,   0,   0,   0,   0,   0, -20},
-    {-20,   0,  10,  10,  10,  10,   0, -20},
-    {-10,   0,  10,  10,  10,  10,   0, -10},
-    {0,   0,  10,  10,  10,  10,   0, -10},
-    {-20,  10,  10,  10,  10,  10,   0, -20},
-    {-20,   0,  10,   0,   0,   0,   0, -20},
-    {-40, -20, -20, -10, -10, -20, -20, -40}
+    {-20, -10, -10,  -5,  -5, -10, -10, -20},
+    {-10,   0,   0,   0,   0,   0,   0, -10},
+    {-10,   0,   5,   5,   5,   5,   0, -10},
+    { -5,   0,   5,   5,   5,   5,   0,  -5},
+    {  0,   0,   5,   5,   5,   5,   0,  -5},
+    {-10,   5,   5,   5,   5,   5,   0, -10},
+    {-10,   0,   5,   0,   0,   0,   0, -10},
+    {-20, -10, -10,  -5,  -5, -10, -10, -20}
 };
 
 const int AI::kingPST[8][8] = {
-    {-60, -80, -80, -20, -20, -80, -80, -60},
-    {-60, -80, -80, -20, -20, -80, -80, -60},
-    {-60, -80, -80, -20, -20, -80, -80, -60},
-    {-60, -80, -80, -20, -20, -80, -80, -60},
-    {-40, -60, -60, -80, -80, -60, -60, -40},
-    {-20, -40, -40, -40, -40, -40, -40, -20},
-    {40,  40,   0,   0,   0,   0,  40,  40},
-    {40,  60,  20,   0,   0,  20,  60,  40}
+    {-30, -40, -40, -50, -50, -40, -40, -30},
+    {-30, -40, -40, -50, -50, -40, -40, -30},
+    {-30, -40, -40, -50, -50, -40, -40, -30},
+    {-30, -40, -40, -50, -50, -40, -40, -30},
+    {-20, -30, -30, -40, -40, -30, -30, -20},
+    {-10, -20, -20, -20, -20, -20, -20, -10},
+    { 20,  20,   0,   0,   0,   0,  20,  20},
+    { 20,  30,  10,   0,   0,  10,  30,  20}
 };
 
-// 엔드게임용 킹 PST (중앙으로 이동 장려)
 const int king_endgame_pst[8][8] = {
     {-80, -60, -40, -20, -20, -40, -60, -80},
     {-60, -40, -20,   0,   0, -20, -40, -60},
@@ -88,146 +88,290 @@ const int king_endgame_pst[8][8] = {
     {-80, -60, -40, -20, -20, -40, -60, -80}
 };
 
+struct MoveScore {
+    Move move;
+    int score;
+};
+
+static inline bool sameMove(const Move& a, const Move& b)
+{
+    return a.fromX == b.fromX && a.fromY == b.fromY &&
+           a.toX == b.toX && a.toY == b.toY &&
+           a.promotionType == b.promotionType && a.moveType == b.moveType;
+}
+
+static QString moveToString(const Move& m)
+{
+    QChar fromFile('a' + m.fromX);
+    QChar toFile('a' + m.toX);
+    int fromRank = 8 - m.fromY;
+    int toRank = 8 - m.toY;
+    return QString("%1%2-%3%4").arg(fromFile).arg(fromRank).arg(toFile).arg(toRank);
+}
 
 int AI::scoreMove(const Game& game, const Move& move)
 {
-    // MVV-LVA: Most Valuable Victim - Least Valuable Aggressor
+    Piece* attacker = game.getPiece(move.fromX, move.fromY);
     Piece* target = game.getPiece(move.toX, move.toY);
-    int score = 0;
+    if (move.moveType == Move::EN_PASSANT && attacker != nullptr) {
+        int capturedPawnY = (attacker->getColor() == Chess::WHITE) ? move.toY + 1 : move.toY - 1;
+        target = game.getPiece(move.toX, capturedPawnY);
+    }
 
-    if (target != nullptr)
+    int score = 0;
+    if (target && attacker)
     {
-        Piece* attacker = game.getPiece(move.fromX, move.fromY);
-        if (attacker != nullptr) {
-             score = 10 * target->getValue() - attacker->getValue();
-        }
+        score += 10 * target->getValue() - attacker->getValue();
+    }
+    if (move.promotionType != Chess::EMPTY) {
+        score += 800 + move.promotionType * 10;
+    }
+    if (move.moveType == Move::CASTLE_KS || move.moveType == Move::CASTLE_QS) {
+        score += 50;
     }
     return score;
 }
 
 int AI::eval(const Game& game, Chess::PieceColor colorToMax)
 {
-    int totalScore = 0;
-    int numMajorPieces = 0; // 퀸, 룩 카운트
+    int whiteScore = 0;
+    int blackScore = 0;
+    int totalMaterial = 0;
+    int whitePawnFiles[8] = {0};
+    int blackPawnFiles[8] = {0};
+    int whiteBishops = 0;
+    int blackBishops = 0;
 
-    for(int x = 0; x < 8; ++x)
-    {
-        for(int y = 0; y < 8; ++y)
-        {
+    for (int x = 0; x < 8; ++x) {
+        for (int y = 0; y < 8; ++y) {
             Piece* p = game.m_board[x][y].get();
-
-            if(p != nullptr)
-            {
-                if (p->getType() == Chess::QUEEN || p->getType() == Chess::ROOK) {
-                    numMajorPieces++;
+            if (p) {
+                if (p->getType() != Chess::KING) {
+                    totalMaterial += p->getValue();
                 }
-
-                int pieceScore = p->getValue();
-                int pstY = (p->getColor() == Chess::WHITE) ? y : (7 - y);
-
-                switch (p->getType())
-                {
-                case Chess::PAWN: pieceScore += pawnPST[pstY][x]; break;
-                case Chess::BISHOP: pieceScore += bishopPST[pstY][x]; break;
-                case Chess::KNIGHT: pieceScore += knightPST[pstY][x]; break;
-                case Chess::ROOK: pieceScore += rookPST[pstY][x]; break;
-                case Chess::QUEEN: pieceScore += queenPST[pstY][x]; break;
-                case Chess::KING:
-                    // 게임 단계에 따라 다른 PST 적용
-                    if (numMajorPieces <= 3) { // 엔드게임으로 간주 (퀸 하나 또는 룩 두개 이하)
-                        pieceScore += king_endgame_pst[pstY][x];
-                    } else { // 미들게임
-                        pieceScore += kingPST[pstY][x];
-                    }
-                    break;
-                default: break;
+                if (p->getType() == Chess::PAWN) {
+                    if (p->getColor() == Chess::WHITE) whitePawnFiles[x]++;
+                    else blackPawnFiles[x]++;
+                } else if (p->getType() == Chess::BISHOP) {
+                    if (p->getColor() == Chess::WHITE) whiteBishops++; else blackBishops++;
                 }
-
-                if(p->getColor() == colorToMax)
-                    totalScore += pieceScore;
-                else
-                    totalScore -= pieceScore;
             }
         }
     }
-    return totalScore;
+
+    bool endgame = totalMaterial <= 2400;
+
+    for (int x = 0; x < 8; ++x) {
+        for (int y = 0; y < 8; ++y) {
+            Piece* p = game.m_board[x][y].get();
+            if (!p) continue;
+
+            int pstY = (p->getColor() == Chess::WHITE) ? y : 7 - y;
+            int pieceScore = p->getValue();
+
+            switch (p->getType())
+            {
+            case Chess::PAWN: pieceScore += pawnPST[pstY][x]; break;
+            case Chess::BISHOP: pieceScore += bishopPST[pstY][x]; break;
+            case Chess::KNIGHT: pieceScore += knightPST[pstY][x]; break;
+            case Chess::ROOK: pieceScore += rookPST[pstY][x]; break;
+            case Chess::QUEEN: pieceScore += queenPST[pstY][x]; break;
+            case Chess::KING:
+                pieceScore += endgame ? king_endgame_pst[pstY][x] : kingPST[pstY][x];
+                if (!endgame) {
+                    bool castled = (p->getColor() == Chess::WHITE) ?
+                                   ((x == 6 || x == 2) && y == 7) :
+                                   ((x == 6 || x == 2) && y == 0);
+                    if (castled) pieceScore += 40;
+                    else if (x >= 2 && x <= 5 && y == ((p->getColor() == Chess::WHITE) ? 7 : 0)) pieceScore += 5;
+                    else pieceScore -= 20;
+                }
+                break;
+            default: break;
+            }
+
+            // Encourage central control
+            if (x >= 2 && x <= 5 && y >= 2 && y <= 5) {
+                int centerBonus = 0;
+                if (p->getType() == Chess::PAWN) centerBonus = 6;
+                else if (p->getType() == Chess::KNIGHT || p->getType() == Chess::BISHOP) centerBonus = 12;
+                else if (p->getType() == Chess::QUEEN) centerBonus = 6;
+                pieceScore += centerBonus;
+            }
+
+            if (p->getColor() == Chess::WHITE)
+                whiteScore += pieceScore;
+            else
+                blackScore += pieceScore;
+        }
+    }
+
+    // Pawn structure penalties
+    for (int file = 0; file < 8; ++file) {
+        if (whitePawnFiles[file] > 1) whiteScore -= 12 * (whitePawnFiles[file] - 1);
+        if (blackPawnFiles[file] > 1) blackScore -= 12 * (blackPawnFiles[file] - 1);
+
+        if (whitePawnFiles[file] > 0) {
+            bool left = (file > 0) && whitePawnFiles[file - 1] > 0;
+            bool right = (file < 7) && whitePawnFiles[file + 1] > 0;
+            if (!left && !right) whiteScore -= 10;
+        }
+        if (blackPawnFiles[file] > 0) {
+            bool left = (file > 0) && blackPawnFiles[file - 1] > 0;
+            bool right = (file < 7) && blackPawnFiles[file + 1] > 0;
+            if (!left && !right) blackScore -= 10;
+        }
+    }
+
+    // Bishop pair bonus
+    if (whiteBishops >= 2) whiteScore += 30;
+    if (blackBishops >= 2) blackScore += 30;
+
+    return (colorToMax == Chess::WHITE) ? (whiteScore - blackScore) : (blackScore - whiteScore);
+}
+
+int AI::quiescence(Game& state, int alpha, int beta, bool maxing, Chess::PieceColor aiColor)
+{
+    nodeCount++;
+
+    int standPat = eval(state, aiColor);
+    if (maxing) {
+        if (standPat >= beta) return standPat;
+        alpha = std::max(alpha, standPat);
+    } else {
+        if (standPat <= alpha) return standPat;
+        beta = std::min(beta, standPat);
+    }
+
+    std::vector<Move> moves = state.generateMoves(state.getCurrentTurn());
+    std::sort(moves.begin(), moves.end(), [&](const Move& a, const Move& b) {
+        return scoreMove(state, a) > scoreMove(state, b);
+    });
+
+    if (maxing) {
+        int best = standPat;
+        for (const auto& move : moves) {
+            Piece* target = state.getPiece(move.toX, move.toY);
+            bool isCapture = (target != nullptr) || move.moveType == Move::EN_PASSANT || move.promotionType != Chess::EMPTY;
+            if (!isCapture) continue;
+
+            UndoInfo undo = state.makeMove(move);
+            int score = quiescence(state, alpha, beta, false, aiColor);
+            state.unmakeMove(move, undo);
+
+            best = std::max(best, score);
+            alpha = std::max(alpha, score);
+            if (beta <= alpha) break;
+        }
+        return best;
+    } else {
+        int best = standPat;
+        for (const auto& move : moves) {
+            Piece* target = state.getPiece(move.toX, move.toY);
+            bool isCapture = (target != nullptr) || move.moveType == Move::EN_PASSANT || move.promotionType != Chess::EMPTY;
+            if (!isCapture) continue;
+
+            UndoInfo undo = state.makeMove(move);
+            int score = quiescence(state, alpha, beta, true, aiColor);
+            state.unmakeMove(move, undo);
+
+            best = std::min(best, score);
+            beta = std::min(beta, score);
+            if (beta <= alpha) break;
+        }
+        return best;
+    }
 }
 
 int AI::alphabeta(Game& state, int depth, int alpha, int beta, bool maxing, Chess::PieceColor aiColor)
 {
     nodeCount++;
 
-    // 게임이 끝났는지 먼저 확인 (체크메이트, 스테일메이트, 무승부)
     Game::GameState gameState = state.getGameState();
     if (gameState != Game::IN_PROGRESS)
     {
         if (gameState == Game::CHECKMATE) {
-            // 현재 턴의 플레이어가 체크메이트 당한 것임.
-            // 만약 현재 턴이 AI(maxing) 차례인데 체크메이트라면 AI가 진 것이므로 최악의 점수.
-            // 반대라면 AI가 이긴 것이므로 최고의 점수.
-            // depth를 더해주는 이유: 더 빨리 이기는 수를 선호하게 만들기 위함.
             return maxing ? (-100000 - depth) : (100000 + depth);
         }
-        // 스테일메이트 또는 다른 무승부 조건
         return 0;
     }
 
-    // 깊이 제한에 도달하면 평가 함수 호출
     if(depth == 0)
     {
-        return eval(state, aiColor);
+        return quiescence(state, alpha, beta, maxing, aiColor);
+    }
+
+    const uint64_t hash = state.currentHash;
+    int originalAlpha = alpha;
+    int originalBeta = beta;
+
+    auto ttIt = transpositionTable.find(hash);
+    if (ttIt != transpositionTable.end() && ttIt->second.depth >= depth) {
+        const TTEntry& entry = ttIt->second;
+        if (entry.flag == TTEntry::EXACT) {
+            return entry.score;
+        } else if (entry.flag == TTEntry::LOWER) {
+            alpha = std::max(alpha, entry.score);
+        } else if (entry.flag == TTEntry::UPPER) {
+            beta = std::min(beta, entry.score);
+        }
+        if (alpha >= beta) {
+            return entry.score;
+        }
     }
 
     std::vector<Move> allMoves = state.generateMoves(state.getCurrentTurn());
+    Move ttBest;
+    bool hasTTBest = (ttIt != transpositionTable.end());
+    if (hasTTBest) ttBest = ttIt->second.bestMove;
 
-    // Move Ordering: MVV-LVA로 정렬
     std::sort(allMoves.begin(), allMoves.end(), [&](const Move& a, const Move& b) {
+        bool aBest = hasTTBest && sameMove(a, ttBest);
+        bool bBest = hasTTBest && sameMove(b, ttBest);
+        if (aBest != bBest) return aBest;
         return scoreMove(state, a) > scoreMove(state, b);
     });
 
-    if(maxing)
+    Move bestMoveLocal;
+    int bestScore = maxing ? std::numeric_limits<int>::min() / 2 : std::numeric_limits<int>::max() / 2;
+
+    for(const auto& move : allMoves)
     {
-        int maxEval = -200000;
-        for(const auto& move : allMoves)
+        UndoInfo undo = state.makeMove(move);
+        int evalScore = alphabeta(state, depth - 1, alpha, beta, !maxing, aiColor);
+        state.unmakeMove(move, undo);
+
+        if(maxing)
         {
-            UndoInfo undo = state.makeMove(move);
-            
-            int evalScore = alphabeta(state, depth - 1, alpha, beta, false, aiColor);
-
-            state.unmakeMove(move, undo);
-
-            maxEval = std::max(maxEval, evalScore);
+            if (evalScore > bestScore) {
+                bestScore = evalScore;
+                bestMoveLocal = move;
+            }
             alpha = std::max(alpha, evalScore);
-
-            if(beta <= alpha) break;
         }
-        return maxEval;
-    }
-    else
-    {
-        int minEval = 200000;
-        for(const auto& move : allMoves)
+        else
         {
-            UndoInfo undo = state.makeMove(move);
-
-            int evalScore = alphabeta(state, depth - 1, alpha, beta, true, aiColor);
-
-            state.unmakeMove(move, undo);
-
-            minEval = std::min(minEval, evalScore);
+            if (evalScore < bestScore) {
+                bestScore = evalScore;
+                bestMoveLocal = move;
+            }
             beta = std::min(beta, evalScore);
-
-            if(beta <= alpha) break;
         }
-        return minEval;
-    }
-}
 
-// 루트 노드에서의 수와 점수를 저장하기 위한 구조체
-struct MoveScore {
-    Move move;
-    int score;
-};
+        if(beta <= alpha) break;
+    }
+
+    TTEntry entry;
+    entry.depth = depth;
+    entry.score = bestScore;
+    entry.bestMove = bestMoveLocal;
+    if (bestScore <= originalAlpha) entry.flag = TTEntry::UPPER;
+    else if (bestScore >= originalBeta) entry.flag = TTEntry::LOWER;
+    else entry.flag = TTEntry::EXACT;
+    transpositionTable[hash] = entry;
+
+    return bestScore;
+}
 
 Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
 {
@@ -236,58 +380,46 @@ Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
     QElapsedTimer timer;
     timer.start();
     nodeCount = 0;
+    transpositionTable.clear();
 
     Game rootGame = game; 
     std::vector<Move> rootMoves = rootGame.generateMoves(aiColor);
     
     if(rootMoves.empty()) return Move();
     
-    // 초기 정렬 (MVV-LVA)
     std::sort(rootMoves.begin(), rootMoves.end(), [&](const Move& a, const Move& b) {
         return scoreMove(rootGame, a) > scoreMove(rootGame, b);
     });
 
-    // 각 수의 평가 점수를 저장할 벡터
     std::vector<MoveScore> scoredMoves;
-    for (const auto& m : rootMoves) scoredMoves.push_back({m, -200000});
+    for (const auto& m : rootMoves) scoredMoves.push_back({m, std::numeric_limits<int>::min() / 2});
 
-    Move bestMoveSoFar;
+    Move bestMoveSoFar = scoredMoves[0].move;
 
     for (int currentDepth = 1; currentDepth <= searchDepth; ++currentDepth)
     {
         int alpha = -200000;
         int beta = 200000;
         
-        // 이번 깊이(currentDepth)에서 모든 루트 수 탐색
         for (size_t i = 0; i < scoredMoves.size(); ++i)
         {
             Move move = scoredMoves[i].move;
             UndoInfo undo = rootGame.makeMove(move);
 
-            // 재귀 호출 (AI가 수를 뒀으므로 다음은 상대방 턴, 즉 min-node)
             int score = alphabeta(rootGame, currentDepth - 1, alpha, beta, false, aiColor);
             
             rootGame.unmakeMove(move, undo);
 
-            // 루트 노드는 max-node 이므로, alpha 값을 업데이트
             alpha = std::max(alpha, score);
-
-            // 점수 기록
             scoredMoves[i].score = score;
         }
 
-        // [핵심] 점수 높은 순으로 정렬 (다음 깊이 탐색 시 좋은 수를 먼저 보기 위함)
         std::sort(scoredMoves.begin(), scoredMoves.end(), [](const MoveScore& a, const MoveScore& b) {
             return a.score > b.score;
         });
 
         bestMoveSoFar = scoredMoves[0].move;
-
-        // (선택 사항) 시간이 너무 오래 걸리면 중단하는 로직을 여기에 추가 가능
-        // if (timer.elapsed() > 5000) { 
-        //     qDebug() << "Time limit exceeded, breaking at depth " << currentDepth;
-        //     break; 
-        // }
+        qDebug() << "[AI] depth" << currentDepth << "best" << scoredMoves[0].score << "move" << moveToString(bestMoveSoFar);
     }
 
     qDebug() << "========================================";
@@ -295,6 +427,7 @@ Move AI::findBestMove(const Game& game, Chess::PieceColor aiColor)
     qDebug() << "Time Elapsed:" << timer.elapsed() << "ms"; 
     qDebug() << "Nodes Visited:" << nodeCount;
     qDebug() << "Best Move Score:" << scoredMoves[0].score;
+    qDebug() << "PV start move:" << moveToString(bestMoveSoFar);
     qDebug() << "========================================";
 
     return bestMoveSoFar;
