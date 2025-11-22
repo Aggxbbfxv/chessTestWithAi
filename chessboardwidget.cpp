@@ -12,6 +12,11 @@ ChessBoardWidget::ChessBoardWidget(QWidget *parent)
     setAutoFillBackground(true);
 }
 
+ChessBoardWidget::~ChessBoardWidget()
+{
+    // No heap-owned resources to release yet. Added to satisfy the Q_OBJECT vtable.
+}
+
 QSize ChessBoardWidget::sizeHint() const
 {
     return QSize(600, 600);
@@ -31,6 +36,26 @@ void ChessBoardWidget::startGame()
     m_validMoves.clear();
     update();
     qDebug() << "Game Started!";
+}
+
+void ChessBoardWidget::onAiMoveFound(Move move)
+{
+    if (m_currentMode != aiMode) {
+        qDebug() << "AI move received but widget is not in AI mode.";
+        return;
+    }
+
+    if (move.isNull()) {
+        qDebug() << "AI cannot move (Stalemate or Checkmate?)";
+        return;
+    }
+
+    m_game.makeMove(move);
+    m_selectedPos = QPoint(-1, -1);
+    m_validMoves.clear();
+
+    qDebug() << "AI Moved:" << move.fromX << move.fromY << "->" << move.toX << move.toY;
+    update();
 }
 
 void ChessBoardWidget::paintEvent(QPaintEvent *event)
@@ -139,13 +164,7 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
 
                 if (m_currentMode == aiMode && !m_game.isGameOver()) {
                     Move aiMove = AI::findBestMove(m_game, Chess::BLACK);
-                    if (!aiMove.isNull()) {
-                        UndoInfo ai_undo = m_game.makeMove(aiMove);
-                        qDebug() << "AI Moved:" << aiMove.fromX << aiMove.fromY << "->" << aiMove.toX << aiMove.toY;
-                    } else {
-                        qDebug() << "AI cannot move (Stalemate or Checkmate?)";
-                    }
-                    update();
+                    onAiMoveFound(aiMove);
                 }
                 return;
             }
