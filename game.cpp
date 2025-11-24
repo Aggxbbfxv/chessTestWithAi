@@ -333,7 +333,8 @@ bool Game::isCheck(Chess::PieceColor kingColor) const
     // 2. 폰 공격 확인
     // 내 킹을 공격할 수 있는 '적 폰의 위치'를 확인합니다.
     // 적 폰이 이동해오는 방향의 반대쪽 대각선에 적 폰이 있어야 함
-    int pawnDir = (kingColor == Chess::WHITE) ? -1 : 1; 
+    // Check pawn attacks from the enemy side (white pawns attack -1, black pawns attack +1 on y-axis)
+    int pawnDir = (enemyColor == Chess::WHITE) ? -1 : 1;
 
     int py = ky + pawnDir; 
     if(py >= 0 && py < 8) {

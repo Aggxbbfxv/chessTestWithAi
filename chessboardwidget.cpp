@@ -1,5 +1,6 @@
 #include "chessboardwidget.h"
 #include "piece.h"
+#include "ai.h"
 #include <QDebug>
 #include <QCoreApplication>
 #include <QPainter>
