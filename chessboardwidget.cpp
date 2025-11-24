@@ -6,7 +6,11 @@
 #include <QMouseEvent>
 
 ChessBoardWidget::ChessBoardWidget(QWidget *parent)
-    : QWidget(parent), m_selectedPos(-1, -1), m_currentMode(customMode)
+    : QWidget(parent),
+      m_selectedPos(-1, -1),
+      m_lastFrom(-1, -1),
+      m_lastTo(-1, -1),
+      m_currentMode(customMode)
 {
     setBackgroundRole(QPalette::Base);
     setAutoFillBackground(true);
@@ -29,22 +33,36 @@ void ChessBoardWidget::setGameMode(gameMode mode)
     else qDebug() << "Mode Set: Custom (PvP)";
 }
 
+void ChessBoardWidget::setAiPlaysWhite(bool enable)
+{
+    m_aiPlaysWhite = enable;
+}
+
+void ChessBoardWidget::setAiPlaysBlack(bool enable)
+{
+    m_aiPlaysBlack = enable;
+}
+
+void ChessBoardWidget::setAiPlayers(bool white, bool black)
+{
+    m_aiPlaysWhite = white;
+    m_aiPlaysBlack = black;
+}
+
 void ChessBoardWidget::startGame()
 {
     m_game.resetBoard();
     m_selectedPos = QPoint(-1, -1);
     m_validMoves.clear();
+    m_lastFrom = QPoint(-1, -1);
+    m_lastTo = QPoint(-1, -1);
     update();
     qDebug() << "Game Started!";
+    triggerAiIfNeeded();
 }
 
 void ChessBoardWidget::onAiMoveFound(Move move)
 {
-    if (m_currentMode != aiMode) {
-        qDebug() << "AI move received but widget is not in AI mode.";
-        return;
-    }
-
     if (move.isNull()) {
         qDebug() << "AI cannot move (Stalemate or Checkmate?)";
         return;
@@ -53,6 +71,8 @@ void ChessBoardWidget::onAiMoveFound(Move move)
     m_game.makeMove(move);
     m_selectedPos = QPoint(-1, -1);
     m_validMoves.clear();
+    m_lastFrom = QPoint(move.fromX, move.fromY);
+    m_lastTo = QPoint(move.toX, move.toY);
 
     qDebug() << "AI Moved:" << move.fromX << move.fromY << "->" << move.toX << move.toY;
     update();
@@ -65,8 +85,8 @@ void ChessBoardWidget::paintEvent(QPaintEvent *event)
     painter.setRenderHint(QPainter::Antialiasing);
 
     drawBoard(painter);
-    drawHighlights(painter);
     drawPieces(painter);
+    drawHighlights(painter);
 }
 
 void ChessBoardWidget::drawBoard(QPainter &painter)
@@ -126,6 +146,17 @@ void ChessBoardWidget::drawHighlights(QPainter &painter)
 {
     int w = width() / 8;
     int h = height() / 8;
+    if (w == 0 || h == 0) return;
+
+    // Highlight the last move squares with a translucent red overlay
+    const QColor lastMoveColor(255, 0, 0, 100);
+    painter.setPen(Qt::NoPen);
+    if (m_lastFrom.x() >= 0 && m_lastFrom.y() >= 0) {
+        painter.fillRect(m_lastFrom.x() * w, m_lastFrom.y() * h, w, h, lastMoveColor);
+    }
+    if (m_lastTo.x() >= 0 && m_lastTo.y() >= 0) {
+        painter.fillRect(m_lastTo.x() * w, m_lastTo.y() * h, w, h, lastMoveColor);
+    }
 
     if (m_selectedPos.x() != -1) {
         painter.setPen(QPen(QColor(255, 215, 0, 220), 4));
@@ -152,20 +183,25 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
 
     if (col < 0 || col >= 8 || row < 0 || row >= 8) return;
 
+    if (isAiTurn()) {
+        // AI controls the current turn; ignore human input and let AI act if pending
+        triggerAiIfNeeded();
+        return;
+    }
+
     if (m_selectedPos.x() != -1) {
         for (const Move& m : m_validMoves) {
             if (m.toX == col && m.toY == row) {
                 UndoInfo undo = m_game.makeMove(m);
 
+                m_lastFrom = QPoint(m.fromX, m.fromY);
+                m_lastTo = QPoint(m.toX, m.toY);
                 m_selectedPos = QPoint(-1, -1);
                 m_validMoves.clear();
                 repaint();
                 QCoreApplication::processEvents();
 
-                if (m_currentMode == aiMode && !m_game.isGameOver()) {
-                    Move aiMove = AI::findBestMove(m_game, Chess::BLACK);
-                    onAiMoveFound(aiMove);
-                }
+                triggerAiIfNeeded();
                 return;
             }
         }
@@ -174,7 +210,8 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
     Piece* p = m_game.getPiece(col, row);
 
     if (p && p->getColor() == m_game.getCurrentTurn()) {
-        if (m_currentMode == aiMode && p->getColor() == Chess::BLACK) {
+        if ((p->getColor() == Chess::WHITE && m_aiPlaysWhite) ||
+            (p->getColor() == Chess::BLACK && m_aiPlaysBlack)) {
             return;
         }
 
@@ -186,5 +223,31 @@ void ChessBoardWidget::mousePressEvent(QMouseEvent *event)
         m_selectedPos = QPoint(-1, -1);
         m_validMoves.clear();
         update();
+    }
+}
+
+bool ChessBoardWidget::isAiTurn() const
+{
+    Chess::PieceColor turn = m_game.getCurrentTurn();
+    return (turn == Chess::WHITE && m_aiPlaysWhite) || (turn == Chess::BLACK && m_aiPlaysBlack);
+}
+
+void ChessBoardWidget::triggerAiIfNeeded()
+{
+    if (m_game.isGameOver()) return;
+
+    while (isAiTurn()) {
+        Move aiMove = AI::findBestMove(m_game, m_game.getCurrentTurn());
+        if (aiMove.isNull()) {
+            qDebug() << "AI cannot move (no legal moves)";
+            break;
+        }
+
+        onAiMoveFound(aiMove);
+
+        if (m_game.isGameOver()) break;
+
+        // Let the event loop process UI updates between consecutive AI moves (AI vs AI)
+        QCoreApplication::processEvents();
     }
 }

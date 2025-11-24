@@ -28,6 +28,9 @@ public:
     QSize sizeHint() const override;
 
     void setGameMode(gameMode mode);
+    void setAiPlaysWhite(bool enable);
+    void setAiPlaysBlack(bool enable);
+    void setAiPlayers(bool white, bool black);
 
 public slots:
     void startGame();
@@ -46,15 +49,23 @@ private:
     void drawBoard(QPainter &painter);
     void drawPieces(QPainter &painter);
     void drawHighlights(QPainter &painter);
+    void triggerAiIfNeeded();
+    bool isAiTurn() const;
 
-    // ���� ���� ��ü
+    // Game state data
     Game m_game;
 
-    // UI ���ͷ��� ����
-    QPoint m_selectedPos;          // ���� ���õ� ��ǥ
-    std::vector<Move> m_validMoves; // ���õ� �⹰�� �� �� �ִ� ����
+    // UI interaction state
+    QPoint m_selectedPos;          // Currently selected square
+    std::vector<Move> m_validMoves; // Moves available for the selected piece
 
-    gameMode m_currentMode; // [�߰�] ���� ���� ��� ���� ����
+    // Last move highlight
+    QPoint m_lastFrom;
+    QPoint m_lastTo;
+
+    gameMode m_currentMode; // Current game mode
+    bool m_aiPlaysWhite = false;
+    bool m_aiPlaysBlack = false;
 };
 
 #endif

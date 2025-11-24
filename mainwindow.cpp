@@ -16,6 +16,11 @@ MainWindow::MainWindow(QWidget *parent)
     layout->setContentsMargins(0,0,0,0);
     ui->widget->setLayout(layout);
     m_boardWidget->setEnabled(false);
+
+    // Initialize AI color selection from UI defaults
+    m_aiPlaysWhite = ui->aiWhite->isChecked();
+    m_aiPlaysBlack = ui->aiBlack->isChecked();
+    m_boardWidget->setAiPlayers(m_aiPlaysWhite, m_aiPlaysBlack);
 }
 
 MainWindow::~MainWindow()
@@ -38,6 +43,20 @@ void MainWindow::on_startButton_clicked()
         m_boardWidget->setGameMode(ChessBoardWidget::customMode);
     }
 
+    // Sync AI sides with current checkbox state for the new game
+    m_boardWidget->setAiPlayers(m_aiPlaysWhite, m_aiPlaysBlack);
+
     m_boardWidget->startGame();
 }
 
+void MainWindow::on_aiWhite_toggled(bool checked)
+{
+    m_aiPlaysWhite = checked;
+    m_boardWidget->setAiPlayers(m_aiPlaysWhite, m_aiPlaysBlack);
+}
+
+void MainWindow::on_aiBlack_toggled(bool checked)
+{
+    m_aiPlaysBlack = checked;
+    m_boardWidget->setAiPlayers(m_aiPlaysWhite, m_aiPlaysBlack);
+}
